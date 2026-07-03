@@ -1,0 +1,4 @@
+# личные финансовые данные — никогда не пушить
+data.json
+budget-export-*.json
+.DS_Store

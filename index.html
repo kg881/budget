@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Бюджет — доходы и расходы</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>₽</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B1220; --surface:#111C33; --surface2:#16233E; --surface3:#1B2B4A;
+  --border:rgba(255,255,255,.08); --border2:rgba(255,255,255,.14);
+  --ink:#F1F5F9; --ink2:#94A3B8; --muted:#64748B;
+  --accent:#3B82F6; --accent-deep:#1E40AF;
+  --pos:#0DA06E; --pos-text:#34D399; --neg:#E56262; --neg-text:#F87171;
+  --warn:#FBBF24; --grid:rgba(255,255,255,.06);
+  --sans:'Fira Sans',system-ui,-apple-system,sans-serif;
+  --mono:'Fira Code',ui-monospace,'SF Mono',monospace;
+  --r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(1200px 500px at 70% -10%,rgba(30,64,175,.18),transparent 60%);pointer-events:none}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 20px 80px;position:relative}
+/* header */
+header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.logo{display:flex;align-items:baseline;gap:10px}
+.logo h1{font-size:20px;font-weight:600;letter-spacing:-.02em}
+.logo .yr{font-family:var(--mono);color:var(--ink2);font-size:13px}
+.spacer{flex:1}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border:1px solid var(--border);border-radius:99px;font-size:12.5px;color:var(--ink2);background:var(--surface)}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.chip.ok .dot{background:var(--pos-text)}
+.chip.warn .dot{background:var(--warn)}
+.chip b{color:var(--ink);font-family:var(--mono);font-weight:500}
+/* tabs */
+nav{display:flex;gap:4px;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:4px;width:max-content;margin-bottom:24px}
+nav button{appearance:none;border:0;background:transparent;color:var(--ink2);font:inherit;font-size:14px;font-weight:500;padding:7px 16px;border-radius:8px;cursor:pointer;transition:all .18s}
+nav button:hover{color:var(--ink)}
+nav button.on{background:var(--accent-deep);color:#fff}
+/* cards & layout */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px}
+.card .lbl{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.card .val{font-family:var(--mono);font-size:22px;font-weight:600;letter-spacing:-.01em}
+.card .sub{font-size:12.5px;color:var(--ink2);margin-top:4px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:20px}
+.panel h2{font-size:15px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.panel h2 .note{font-size:12.5px;font-weight:400;color:var(--muted)}
+/* tables */
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;text-align:right;padding:8px 10px;border-bottom:1px solid var(--border2);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:9px 10px;border-bottom:1px solid var(--grid);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13.5px;white-space:nowrap}
+td:first-child{font-family:var(--sans);font-size:14px}
+tr.cur td{background:rgba(59,130,246,.07)}
+tr.dim td{color:var(--muted)}
+tr.total td{border-top:1px solid var(--border2);border-bottom:0;font-weight:600;color:var(--ink)}
+tr.clickable{cursor:pointer}
+tr.clickable:hover td{background:rgba(255,255,255,.03)}
+.pos{color:var(--pos-text)} .neg{color:var(--neg-text)} .mut{color:var(--muted)}
+/* inputs */
+input[type=text],input[type=month],select{background:var(--surface2);border:1px solid var(--border);color:var(--ink);font-family:var(--mono);font-size:13.5px;padding:6px 9px;border-radius:7px;width:110px;text-align:right;transition:border .15s}
+input[type=text]:focus,select:focus{outline:none;border-color:var(--accent)}
+input.wide{width:100%;text-align:left;font-family:var(--sans)}
+td input.wide{min-width:170px}
+input::placeholder{color:var(--muted)}
+select{text-align:left;width:auto;cursor:pointer;font-family:var(--sans)}
+button.btn{appearance:none;border:1px solid var(--border2);background:var(--surface2);color:var(--ink);font:inherit;font-size:13.5px;font-weight:500;padding:7px 14px;border-radius:8px;cursor:pointer;transition:all .15s}
+button.btn:hover{background:var(--surface3);border-color:var(--accent)}
+button.btn.primary{background:var(--accent-deep);border-color:transparent;color:#fff}
+button.btn.primary:hover{background:#2563EB}
+button.btn.sm{padding:4px 10px;font-size:12.5px}
+button.icon{appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:15px;padding:2px 6px;border-radius:6px}
+button.icon:hover{color:var(--neg-text);background:rgba(229,98,98,.1)}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.row+.row{margin-top:10px}
+label.f{font-size:13px;color:var(--ink2)}
+/* chart */
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto}
+.tip{position:fixed;z-index:10;background:var(--surface3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12.5px;pointer-events:none;opacity:0;transition:opacity .12s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.tip b{font-family:var(--mono);font-weight:600}
+/* goals */
+.goal{border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px;background:var(--surface2)}
+.goal .top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.goal .name{font-weight:600;font-size:15px}
+.goal .meta{font-size:12.5px;color:var(--ink2)}
+.meter{height:8px;border-radius:99px;background:var(--surface3);overflow:hidden;margin:8px 0 6px}
+.meter i{display:block;height:100%;border-radius:99px;background:var(--accent);transition:width .4s ease}
+.badge{display:inline-block;font-size:12px;padding:3px 10px;border-radius:99px;font-weight:500}
+.badge.ok{background:rgba(13,160,110,.15);color:var(--pos-text)}
+.badge.mid{background:rgba(251,191,36,.13);color:var(--warn)}
+.badge.bad{background:rgba(229,98,98,.13);color:var(--neg-text)}
+.badge.done{background:rgba(148,163,184,.15);color:var(--ink2)}
+.empty{color:var(--muted);font-size:14px;padding:12px 0}
+.hint{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:10px}
+.monthnav{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.monthnav .mname{font-size:17px;font-weight:600;min-width:170px;text-align:center;text-transform:capitalize}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.savebar{position:fixed;bottom:18px;right:18px;z-index:5}
+::selection{background:rgba(59,130,246,.35)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><h1>Бюджет</h1><span class="yr" id="hdrRange"></span></div>
+    <div class="spacer"></div>
+    <span class="chip" id="cbrChip"><span class="dot"></span>ЦБ&nbsp;<b id="cbrNow">…</b></span>
+    <span class="chip" id="saveChip"><span class="dot"></span><span id="saveTxt">локально</span></span>
+  </header>
+  <nav id="tabs">
+    <button data-tab="year" class="on">Год</button>
+    <button data-tab="month">Месяц</button>
+    <button data-tab="goals">Цели и пул</button>
+    <button data-tab="settings">Настройки</button>
+  </nav>
+  <main id="view"></main>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+/* ============ state ============ */
+const LS_KEY='budget-omp-v1';
+const MONTH_NAMES=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+const MONTH_SHORT=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+const MONTH_DAT=['январю','февралю','марту','апрелю','маю','июню','июлю','августу','сентябрю','октябрю','ноябрю','декабрю'];
+function ymDat(ym){const[y,m]=ym.split('-').map(Number);return MONTH_DAT[m-1]+' '+y;}
+const uid=()=> 'x'+Math.random().toString(36).slice(2,9);
+
+function defaultState(){return {
+  version:1,
+  settings:{planRate:78, horizonStart:'2026-07', horizonMonths:12, bonusCons:300, bonusAvg:1000},
+  template:{
+    incomes:[
+      {id:'i1',name:'ЗП 5-го — рублёвая часть',day:5,cur:'RUB',amount:60000},
+      {id:'i2',name:'ЗП 5-го — крипта',day:5,cur:'USD',amount:2000},
+      {id:'i3',name:'ЗП 20-го',day:20,cur:'RUB',amount:40000},
+    ],
+    expenses:[
+      {id:'e1',name:'Ипотека',amount:27300},
+      {id:'e2',name:'Ozon',amount:5000},
+      {id:'e3',name:'Зал',amount:3000},
+      {id:'e4',name:'Питание (дом + вне дома)',amount:70000},
+      {id:'e5',name:'Медицина',amount:30000},
+      {id:'e6',name:'Телефон, VPN, Wi-Fi',amount:3350},
+      {id:'e7',name:'Красота',amount:10000},
+      {id:'e8',name:'Авто',amount:10000},
+      {id:'e9',name:'Теннис',amount:7000},
+      {id:'e10',name:'Нижний',amount:10000},
+      {id:'e11',name:'Помощь отцу',amount:10000},
+    ]
+  },
+  months:{
+    '2026-07':{
+      incomes:[
+        {id:uid(),tplId:'i1',name:'ЗП 5-го — рублёвая часть',day:5,cur:'RUB',plan:60000,fact:34000,rate:null},
+        {id:uid(),tplId:'i2',name:'ЗП 5-го — крипта',day:5,cur:'USD',plan:2000,fact:2130,rate:78.31},
+        {id:uid(),tplId:'i3',name:'ЗП 20-го',day:20,cur:'RUB',plan:40000,fact:null,rate:null},
+      ],
+      expenses:[
+        {id:uid(),tplId:'e1',name:'Ипотека',plan:27300,fact:null},
+        {id:uid(),tplId:'e2',name:'Ozon',plan:5000,fact:null},
+        {id:uid(),tplId:'e3',name:'Зал',plan:3000,fact:null},
+        {id:uid(),tplId:'e4',name:'Питание (дом + вне дома)',plan:70000,fact:null},
+        {id:uid(),tplId:'e5',name:'Медицина',plan:30000,fact:null},
+        {id:uid(),tplId:'e6',name:'Телефон, VPN, Wi-Fi',plan:3350,fact:null},
+        {id:uid(),tplId:'e7',name:'Красота',plan:10000,fact:null},
+        {id:uid(),tplId:'e8',name:'Авто',plan:10000,fact:null},
+        {id:uid(),tplId:'e9',name:'Теннис',plan:7000,fact:null},
+        {id:uid(),tplId:'e10',name:'Нижний',plan:10000,fact:null},
+        {id:uid(),tplId:'e11',name:'Помощь отцу',plan:10000,fact:null},
+      ]
+    }
+  },
+  bonuses:[],
+  goals:[]
+};}
+
+let state = loadLocal() || defaultState();
+let activeTab='year';
+let curYM = todayYM();
+
+/* ============ helpers ============ */
+function todayYM(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function todayStr(){const d=new Date();return d.toISOString().slice(0,10);}
+function ymAdd(ym,n){let[y,m]=ym.split('-').map(Number);m+=n;y+=Math.floor((m-1)/12);m=((m-1)%12+12)%12+1;return y+'-'+String(m).padStart(2,'0');}
+function ymDiff(a,b){const[ya,ma]=a.split('-').map(Number),[yb,mb]=b.split('-').map(Number);return (yb-ya)*12+(mb-ma);}
+function ymLabel(ym,short){const[y,m]=ym.split('-').map(Number);return (short?MONTH_SHORT[m-1]:MONTH_NAMES[m-1])+(short?' ’'+String(y).slice(2):' '+y);}
+function horizon(){const s=state.settings;return Array.from({length:s.horizonMonths},(_,i)=>ymAdd(s.horizonStart,i));}
+function fmt(n,sign){if(n==null||isNaN(n))return '—';const s=new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Math.round(n));return (sign&&n>0?'+':'')+s;}
+function fmtR(n,sign){return n==null||isNaN(n)?'—':fmt(n,sign)+' ₽';}
+function parseNum(v){if(v==null)return null;const s=String(v).replace(/\s|₽| /g,'').replace(',','.');if(s==='')return null;const n=Number(s);return isNaN(n)?null:n;}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function monthFromTemplate(){return {
+  incomes:state.template.incomes.map(t=>({id:uid(),tplId:t.id,name:t.name,day:t.day,cur:t.cur,plan:t.amount,fact:null,rate:null})),
+  expenses:state.template.expenses.map(t=>({id:uid(),tplId:t.id,name:t.name,plan:t.amount,fact:null})),
+};}
+function ensureMonth(ym){if(!state.months[ym])state.months[ym]=monthFromTemplate();return state.months[ym];}
+function getMonth(ym){return state.months[ym]||monthFromTemplate();}
+
+function incPlanRub(r){return r.cur==='USD'?(r.plan||0)*state.settings.planRate:(r.plan||0);}
+function incFactRub(r){if(r.fact==null)return null;return r.cur==='USD'?r.fact*(r.rate||state.settings.planRate):r.fact;}
+function bonusRub(b){return b.rub!=null?b.rub:(b.usd!=null?b.usd*(b.rate||state.settings.planRate):0);}
+
+function monthTotals(ym){return totalsOf(getMonth(ym));}
+function totalsOf(m){
+  const ip=m.incomes.reduce((s,r)=>s+incPlanRub(r),0);
+  const facts=m.incomes.map(incFactRub).filter(v=>v!=null);
+  const if_=facts.length?facts.reduce((a,b)=>a+b,0):null;
+  const ep=m.expenses.reduce((s,r)=>s+(r.plan||0),0);
+  const efacts=m.expenses.map(r=>r.fact).filter(v=>v!=null);
+  const ef=efacts.length?efacts.reduce((a,b)=>a+b,0):null;
+  const hasFacts=facts.length>0||efacts.length>0;
+  // «рабочая» дельта: факт где есть, план где нет
+  const mixInc=m.incomes.reduce((s,r)=>s+(incFactRub(r)??incPlanRub(r)),0);
+  const mixExp=m.expenses.reduce((s,r)=>s+((r.fact!=null?r.fact:r.plan)||0),0);
+  return {ip,if_:if_,ep,ef,hasFacts,dPlan:ip-ep,dMix:mixInc-mixExp};
+}
+function poolBalance(){
+  const inn=state.bonuses.reduce((s,b)=>s+bonusRub(b),0);
+  const out=state.goals.filter(g=>g.done).reduce((s,g)=>s+(g.spent||0),0);
+  return inn-out;
+}
+
+/* ============ persistence ============ */
+function loadLocal(){try{const s=JSON.parse(localStorage.getItem(LS_KEY));return s&&s.version?s:null;}catch(e){return null;}}
+let fileHandle=null, saveTimer=null;
+const idb={
+  db(){return new Promise((res,rej)=>{const r=indexedDB.open('budget-fsa',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},
+  async get(k){const d=await this.db();return new Promise(res=>{const t=d.transaction('kv').objectStore('kv').get(k);t.onsuccess=()=>res(t.result);t.onerror=()=>res(null);});},
+  async set(k,v){const d=await this.db();return new Promise(res=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>res();});},
+  async del(k){const d=await this.db();return new Promise(res=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').delete(k);t.oncomplete=()=>res();});}
+};
+function setSaveChip(mode){
+  const chip=document.getElementById('saveChip'),txt=document.getElementById('saveTxt');
+  chip.className='chip '+(mode==='file'?'ok':'warn');
+  txt.textContent=mode==='file'?'data.json':(mode==='saving'?'сохраняю…':'локально (браузер)');
+}
+function save(){
+  localStorage.setItem(LS_KEY,JSON.stringify(state));
+  if(fileHandle){
+    setSaveChip('saving');
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(async()=>{
+      try{
+        const w=await fileHandle.createWritable();
+        await w.write(JSON.stringify(state,null,2));
+        await w.close();
+        setSaveChip('file');
+      }catch(e){console.warn('file save failed',e);setSaveChip('local');}
+    },500);
+  }
+}
+async function restoreHandle(){
+  if(!('showOpenFilePicker'in window))return;
+  try{
+    const h=await idb.get('handle');
+    if(!h)return;
+    let p=await h.queryPermission({mode:'readwrite'});
+    if(p==='prompt')p=await h.requestPermission({mode:'readwrite'});
+    if(p!=='granted')return;
+    fileHandle=h;
+    const f=await h.getFile();
+    const text=await f.text();
+    if(text.trim()){
+      const data=JSON.parse(text);
+      if(data&&data.version){state=data;localStorage.setItem(LS_KEY,JSON.stringify(state));}
+    }
+    setSaveChip('file');render();
+  }catch(e){console.warn('restore failed',e);}
+}
+async function connectFile(create){
+  try{
+    let h;
+    if(create){h=await window.showSaveFilePicker({suggestedName:'data.json',types:[{description:'JSON',accept:{'application/json':['.json']}}]});}
+    else{[h]=await window.showOpenFilePicker({types:[{description:'JSON',accept:{'application/json':['.json']}}]});}
+    await h.requestPermission({mode:'readwrite'});
+    fileHandle=h;await idb.set('handle',h);
+    if(!create){
+      const f=await h.getFile();const text=await f.text();
+      if(text.trim()){
+        try{const data=JSON.parse(text);if(data&&data.version){state=data;}}catch(e){}
+      }
+    }
+    save();render();
+  }catch(e){/* cancelled */}
+}
+async function disconnectFile(){fileHandle=null;await idb.del('handle');setSaveChip('local');render();}
+function exportJSON(){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));
+  a.download='budget-export-'+todayStr()+'.json';a.click();
+}
+function importJSON(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='.json';
+  inp.onchange=async()=>{
+    const f=inp.files[0];if(!f)return;
+    try{const data=JSON.parse(await f.text());if(data&&data.version){state=data;save();render();}else alert('Файл не похож на данные бюджета');}
+    catch(e){alert('Не удалось прочитать JSON');}
+  };
+  inp.click();
+}
+
+/* ============ ЦБ ============ */
+const rateCache={};
+async function fetchCbr(dateStr){
+  const key=dateStr||'now';
+  if(rateCache[key])return rateCache[key];
+  let rate;
+  if(!dateStr||dateStr>=todayStr()){
+    const j=await(await fetch('https://www.cbr-xml-daily.ru/daily_json.js')).json();
+    rate=j.Valute.USD.Value;
+  }else{
+    let d=new Date(dateStr+'T12:00:00');
+    for(let i=0;i<10;i++){
+      const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');
+      try{
+        const r=await fetch(`https://www.cbr-xml-daily.ru/archive/${y}/${m}/${dd}/daily_json.js`);
+        if(r.ok){const j=await r.json();rate=j.Valute.USD.Value;break;}
+      }catch(e){}
+      d.setDate(d.getDate()-1);
+    }
+    if(!rate)throw new Error('нет данных ЦБ');
+  }
+  rate=Math.round(rate*100)/100;
+  rateCache[key]=rate;
+  return rate;
+}
+
+/* ============ views ============ */
+const view=document.getElementById('view');
+function render(){
+  document.getElementById('hdrRange').textContent=ymLabel(state.settings.horizonStart,true)+' — '+ymLabel(ymAdd(state.settings.horizonStart,state.settings.horizonMonths-1),true);
+  ({year:renderYear,month:renderMonth,goals:renderGoals,settings:renderSettings})[activeTab]();
+}
+
+/* ---- ГОД ---- */
+function renderYear(){
+  const H=horizon();
+  let cum=0;
+  const rows=H.map(ym=>{const t=monthTotals(ym);cum+=t.dMix;return{ym,...t,cum};});
+  const factInc=rows.reduce((s,r)=>s+(r.if_||0),0);
+  const factExp=rows.reduce((s,r)=>s+(r.ef||0),0);
+  const endCum=rows[rows.length-1].cum;
+  const pool=poolBalance();
+
+  view.innerHTML=`
+  <div class="cards">
+    <div class="card"><div class="lbl">Доходы · факт</div><div class="val">${fmtR(factInc)}</div><div class="sub">регулярные, за горизонт</div></div>
+    <div class="card"><div class="lbl">Расходы · факт</div><div class="val">${fmtR(factExp)}</div><div class="sub">за горизонт</div></div>
+    <div class="card"><div class="lbl">Накопление к ${ymLabel(H[H.length-1],true)}</div><div class="val ${endCum>=0?'pos':'neg'}">${fmtR(endCum,true)}</div><div class="sub">прогноз: факт + план</div></div>
+    <div class="card"><div class="lbl">Бонусный пул</div><div class="val">${fmtR(pool)}</div><div class="sub">на крупные покупки</div></div>
+  </div>
+  <div class="panel">
+    <h2>Дельта по месяцам <span class="note">факт, где введён, иначе план</span></h2>
+    <div class="chart" id="deltaChart">${deltaChartSVG(rows)}</div>
+  </div>
+  <div class="panel">
+    <h2>12 месяцев <span class="note">клик по строке — детализация</span></h2>
+    <div class="tblwrap"><table>
+      <thead><tr><th>Месяц</th><th>Доход план</th><th>Доход факт</th><th>Расход план</th><th>Расход факт</th><th>Дельта</th><th>Накоплено</th></tr></thead>
+      <tbody>
+      ${rows.map(r=>`
+        <tr class="clickable ${r.ym===todayYM()?'cur':''} ${r.hasFacts?'':'dim'}" data-ym="${r.ym}">
+          <td>${ymLabel(r.ym)}</td>
+          <td>${fmt(r.ip)}</td>
+          <td>${r.if_!=null?fmt(r.if_):'—'}</td>
+          <td>${fmt(r.ep)}</td>
+          <td>${r.ef!=null?fmt(r.ef):'—'}</td>
+          <td class="${r.dMix>=0?'pos':'neg'}">${fmt(r.dMix,true)}</td>
+          <td class="${r.cum>=0?'':'neg'}">${fmt(r.cum,true)}</td>
+        </tr>`).join('')}
+      <tr class="total"><td>Итого</td><td>${fmt(rows.reduce((s,r)=>s+r.ip,0))}</td><td>${fmt(factInc)}</td><td>${fmt(rows.reduce((s,r)=>s+r.ep,0))}</td><td>${fmt(factExp)}</td><td class="${endCum>=0?'pos':'neg'}">${fmt(endCum,true)}</td><td></td></tr>
+      </tbody>
+    </table></div>
+  </div>`;
+
+  view.querySelectorAll('tr.clickable').forEach(tr=>tr.addEventListener('click',()=>{curYM=tr.dataset.ym;activeTab='month';syncTabs();render();}));
+  bindChartTips();
+}
+
+function deltaChartSVG(rows){
+  const W=980,H=210,padL=8,padR=8,padT=26,padB=26;
+  const iw=(W-padL-padR)/rows.length;
+  const maxAbs=Math.max(20000,...rows.map(r=>Math.abs(r.dMix)));
+  const zero=padT+(H-padT-padB)*(maxAbs/(maxAbs*2));
+  const scale=(H-padT-padB)/(maxAbs*2);
+  let bars='';
+  rows.forEach((r,i)=>{
+    const bw=Math.min(44,iw*.55);
+    const x=padL+i*iw+(iw-bw)/2;
+    const h=Math.max(2,Math.abs(r.dMix)*scale);
+    const y=r.dMix>=0?zero-h:zero;
+    const c=r.dMix>=0?'var(--pos)':'var(--neg)';
+    const rx=4;
+    bars+=`<rect class="bar" data-i="${i}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${rx}" fill="${c}" opacity="${r.hasFacts?1:.45}"></rect>`;
+    bars+=`<text x="${(padL+i*iw+iw/2).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="var(--mono)">${ymLabel(r.ym,true).split(' ')[0]}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" data-rows='${esc(JSON.stringify(rows.map(r=>({ym:r.ym,d:Math.round(r.dMix),f:r.hasFacts}))))}'>
+    <line x1="${padL}" y1="${zero}" x2="${W-padR}" y2="${zero}" stroke="var(--border2)" stroke-width="1"/>
+    ${bars}
+  </svg>`;
+}
+function bindChartTips(){
+  const tip=document.getElementById('tip');
+  const svg=view.querySelector('.chart svg');
+  if(!svg)return;
+  const rows=JSON.parse(svg.dataset.rows);
+  svg.querySelectorAll('.bar').forEach(b=>{
+    b.style.cursor='pointer';
+    b.addEventListener('mousemove',e=>{
+      const r=rows[+b.dataset.i];
+      tip.innerHTML=`${ymLabel(r.ym)} · дельта <b class="${r.d>=0?'pos':'neg'}">${fmt(r.d,true)} ₽</b>${r.f?'':' <span class="mut">(план)</span>'}`;
+      tip.style.opacity=1;
+      tip.style.left=Math.min(window.innerWidth-220,e.clientX+14)+'px';
+      tip.style.top=(e.clientY+14)+'px';
+    });
+    b.addEventListener('mouseleave',()=>tip.style.opacity=0);
+    b.addEventListener('click',()=>{curYM=rows[+b.dataset.i].ym;activeTab='month';syncTabs();render();});
+  });
+}
+
+/* ---- МЕСЯЦ ---- */
+let monthCache=null;
+function renderMonth(){
+  const H=horizon();
+  if(!H.includes(curYM))curYM=H[0];
+  const materialized=!!state.months[curYM];
+  const m=materialized?state.months[curYM]:(monthCache=monthFromTemplate());
+  const matM=()=>{if(!state.months[curYM])state.months[curYM]=monthCache;return state.months[curYM];};
+  const t=materialized?monthTotals(curYM):totalsOf(m);
+
+  const incRows=m.incomes.map(r=>`
+    <tr data-id="${r.id}">
+      <td><input class="wide" data-f="name" value="${esc(r.name)}"></td>
+      <td class="mut">${r.cur==='USD'?'$':'₽'}</td>
+      <td><input data-f="plan" value="${r.plan??''}"></td>
+      <td><input data-f="fact" value="${r.fact??''}" placeholder="—"></td>
+      ${r.cur==='USD'?`<td><input data-f="rate" value="${r.rate??''}" placeholder="курс" style="width:78px"> <button class="btn sm" data-act="cbr" title="Курс ЦБ на ${curYM}-${String(r.day||5).padStart(2,'0')}">ЦБ</button></td>`:'<td class="mut">—</td>'}
+      <td class="mut">${fmt(incFactRub(r))}</td>
+      <td><button class="icon" data-act="del" title="Удалить">✕</button></td>
+    </tr>`).join('');
+
+  const expRows=m.expenses.map(r=>`
+    <tr data-id="${r.id}">
+      <td><input class="wide" data-f="name" value="${esc(r.name)}"></td>
+      <td><input data-f="plan" value="${r.plan??''}"></td>
+      <td><input data-f="fact" value="${r.fact??''}" placeholder="—"></td>
+      <td><button class="icon" data-act="del" title="Удалить">✕</button></td>
+    </tr>`).join('');
+
+  const monthBonuses=state.bonuses.filter(b=>b.date&&b.date.slice(0,7)===curYM);
+
+  view.innerHTML=`
+  <div class="monthnav">
+    <button class="btn" id="prevM">←</button>
+    <div class="mname">${ymLabel(curYM)}</div>
+    <button class="btn" id="nextM">→</button>
+    <div class="spacer"></div>
+    ${materialized?'<button class="btn sm" id="resetM" title="Сбросить план месяца к шаблону">Сбросить к шаблону</button>':'<span class="chip"><span class="dot"></span>по шаблону</span>'}
+  </div>
+  <div class="cards">
+    <div class="card"><div class="lbl">Доход</div><div class="val">${fmtR(t.if_)}</div><div class="sub">план ${fmtR(t.ip)}</div></div>
+    <div class="card"><div class="lbl">Расход</div><div class="val">${fmtR(t.ef)}</div><div class="sub">план ${fmtR(t.ep)}</div></div>
+    <div class="card"><div class="lbl">Дельта</div><div class="val ${t.dMix>=0?'pos':'neg'}">${fmtR(t.dMix,true)}</div><div class="sub">план ${fmtR(t.dPlan,true)}</div></div>
+    <div class="card"><div class="lbl">Бонусы месяца</div><div class="val">${fmtR(monthBonuses.reduce((s,b)=>s+bonusRub(b),0))}</div><div class="sub">→ в пул</div></div>
+  </div>
+  <div class="grid2">
+    <div class="panel">
+      <h2>Доходы</h2>
+      <div class="tblwrap"><table id="incTbl">
+        <thead><tr><th>Источник</th><th></th><th>План</th><th>Факт</th><th>Курс</th><th>Факт ₽</th><th></th></tr></thead>
+        <tbody>${incRows}</tbody>
+      </table></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn sm" id="addIncR">+ доход ₽</button>
+        <button class="btn sm" id="addIncU">+ доход $</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Расходы</h2>
+      <div class="tblwrap"><table id="expTbl">
+        <thead><tr><th>Категория</th><th>План</th><th>Факт</th><th></th></tr></thead>
+        <tbody>${expRows}</tbody>
+      </table></div>
+      <div class="row" style="margin-top:12px"><button class="btn sm" id="addExp">+ расход</button></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>Бонусы за ${ymLabel(curYM)} <span class="note">идут в пул, на цели</span></h2>
+    ${monthBonuses.length?`<div class="tblwrap"><table><thead><tr><th>Дата</th><th>$</th><th>Курс</th><th>₽</th><th>Комментарий</th><th></th></tr></thead><tbody>
+      ${monthBonuses.map(b=>`<tr data-bid="${b.id}">
+        <td><input data-f="date" value="${b.date||''}" style="width:110px;text-align:left"></td>
+        <td><input data-f="usd" value="${b.usd??''}" style="width:80px"></td>
+        <td><input data-f="rate" value="${b.rate??''}" style="width:78px"> <button class="btn sm" data-act="bcbr">ЦБ</button></td>
+        <td class="mut">${fmt(bonusRub(b))}</td>
+        <td><input class="wide" data-f="note" value="${esc(b.note||'')}" placeholder="за что"></td>
+        <td><button class="icon" data-act="bdel">✕</button></td>
+      </tr>`).join('')}
+    </tbody></table></div>`:'<div class="empty">Бонусов в этом месяце пока нет.</div>'}
+    <div class="row" style="margin-top:12px"><button class="btn sm" id="addBonus">+ бонус</button></div>
+  </div>
+  <p class="hint">Факт вводи после каждой выплаты/траты — поля сохраняются сами. Для $-строк жми «ЦБ»: подставится курс на дату транша.</p>`;
+
+  document.getElementById('prevM').onclick=()=>{curYM=ymAdd(curYM,-1);if(!horizon().includes(curYM))curYM=horizon()[0];render();};
+  document.getElementById('nextM').onclick=()=>{const Hh=horizon();curYM=ymAdd(curYM,1);if(!Hh.includes(curYM))curYM=Hh[Hh.length-1];render();};
+  const rst=document.getElementById('resetM');
+  if(rst)rst.onclick=()=>{if(confirm('Сбросить месяц к шаблону? Введённые факты удалятся.')){delete state.months[curYM];save();render();}};
+  document.getElementById('addIncR').onclick=()=>{matM().incomes.push({id:uid(),name:'Новый доход',cur:'RUB',plan:0,fact:null,rate:null});save();render();};
+  document.getElementById('addIncU').onclick=()=>{matM().incomes.push({id:uid(),name:'Новый доход $',cur:'USD',plan:0,fact:null,rate:null});save();render();};
+  document.getElementById('addExp').onclick=()=>{matM().expenses.push({id:uid(),name:'Новая категория',plan:0,fact:null});save();render();};
+  document.getElementById('addBonus').onclick=()=>{state.bonuses.push({id:uid(),date:curYM+'-15',usd:null,rate:null,rub:null,note:''});save();render();};
+
+  // income table events
+  view.querySelector('#incTbl').addEventListener('change',e=>{
+    const tr=e.target.closest('tr');if(!tr)return;
+    const row=matM().incomes.find(r=>r.id===tr.dataset.id);if(!row)return;
+    const f=e.target.dataset.f;
+    if(f==='name')row.name=e.target.value;
+    else row[f]=parseNum(e.target.value);
+    save();render();
+  });
+  view.querySelector('#incTbl').addEventListener('click',async e=>{
+    const btn=e.target.closest('button');if(!btn)return;
+    const tr=e.target.closest('tr');
+    const mm=matM();
+    const row=mm.incomes.find(r=>r.id===tr.dataset.id);if(!row)return;
+    if(btn.dataset.act==='del'){if(confirm('Удалить строку дохода?')){mm.incomes=mm.incomes.filter(r=>r.id!==row.id);save();render();}}
+    if(btn.dataset.act==='cbr'){
+      btn.textContent='…';
+      try{row.rate=await fetchCbr(curYM+'-'+String(row.day||5).padStart(2,'0'));save();render();}
+      catch(err){btn.textContent='ЦБ';alert('Не удалось получить курс ЦБ (нет сети?)');}
+    }
+  });
+  view.querySelector('#expTbl').addEventListener('change',e=>{
+    const tr=e.target.closest('tr');if(!tr)return;
+    const row=matM().expenses.find(r=>r.id===tr.dataset.id);if(!row)return;
+    const f=e.target.dataset.f;
+    if(f==='name')row.name=e.target.value;else row[f]=parseNum(e.target.value);
+    save();render();
+  });
+  view.querySelector('#expTbl').addEventListener('click',e=>{
+    const btn=e.target.closest('button');if(!btn||btn.dataset.act!=='del')return;
+    const tr=e.target.closest('tr');const mm=matM();
+    if(confirm('Удалить категорию из этого месяца?')){mm.expenses=mm.expenses.filter(r=>r.id!==tr.dataset.id);save();render();}
+  });
+  // bonuses
+  view.querySelectorAll('tr[data-bid]').forEach(tr=>{
+    tr.addEventListener('change',e=>{
+      const b=state.bonuses.find(x=>x.id===tr.dataset.bid);if(!b)return;
+      const f=e.target.dataset.f;
+      if(f==='note'||f==='date')b[f]=e.target.value;else b[f]=parseNum(e.target.value);
+      save();render();
+    });
+    tr.addEventListener('click',async e=>{
+      const btn=e.target.closest('button');if(!btn)return;
+      const b=state.bonuses.find(x=>x.id===tr.dataset.bid);if(!b)return;
+      if(btn.dataset.act==='bdel'){if(confirm('Удалить бонус?')){state.bonuses=state.bonuses.filter(x=>x.id!==b.id);save();render();}}
+      if(btn.dataset.act==='bcbr'){btn.textContent='…';try{b.rate=await fetchCbr(b.date);save();render();}catch(err){btn.textContent='ЦБ';alert('Не удалось получить курс ЦБ');}}
+    });
+  });
+}
+
+/* ---- ЦЕЛИ ---- */
+function renderGoals(){
+  const pool=poolBalance();
+  const s=state.settings;
+  const nowIdx=Math.max(0,ymDiff(s.horizonStart,todayYM()));
+  const goals=state.goals;
+  view.innerHTML=`
+  <div class="cards">
+    <div class="card"><div class="lbl">Бонусный пул</div><div class="val">${fmtR(pool)}</div><div class="sub">бонусы − потрачено на цели</div></div>
+    <div class="card"><div class="lbl">Сценарий: консервативный</div><div class="val">$${s.bonusCons}/мес</div><div class="sub">≈ ${fmtR(s.bonusCons*s.planRate)}/мес</div></div>
+    <div class="card"><div class="lbl">Сценарий: средний</div><div class="val">$${s.bonusAvg}/мес</div><div class="sub">≈ ${fmtR(s.bonusAvg*s.planRate)}/мес</div></div>
+  </div>
+  <div class="panel">
+    <h2>Крупные цели <span class="note">финансируются из бонусного пула</span></h2>
+    <div id="goalList">
+    ${goals.length?goals.map(g=>{
+      if(g.done)return `<div class="goal" data-gid="${g.id}">
+        <div class="top"><span class="name">${esc(g.name)}</span><span class="badge done">куплено · ${fmtR(g.spent)}</span><div class="spacer"></div><button class="icon" data-act="gdel">✕</button></div>
+      </div>`;
+      const mLeft=Math.max(0,ymDiff(todayYM(),g.targetMonth||todayYM()));
+      const projCons=pool+mLeft*s.bonusCons*s.planRate;
+      const projAvg=pool+mLeft*s.bonusAvg*s.planRate;
+      const cover=Math.min(100,Math.max(0,pool/g.amount*100));
+      let badge;
+      if(pool>=g.amount)badge='<span class="badge ok">пул уже покрывает</span>';
+      else if(projCons>=g.amount)badge='<span class="badge ok">успеваешь даже консервативно</span>';
+      else if(projAvg>=g.amount)badge=`<span class="badge mid">только при среднем бонусе · консервативно не хватит ${fmtR(g.amount-projCons)}</span>`;
+      else badge=`<span class="badge bad">не хватает ${fmtR(g.amount-projAvg)} даже при среднем</span>`;
+      return `<div class="goal" data-gid="${g.id}">
+        <div class="top">
+          <span class="name">${esc(g.name)}</span>
+          <span class="meta">${fmtR(g.amount)} · к ${g.targetMonth?ymDat(g.targetMonth):'—'} · осталось ${mLeft} мес</span>
+          <div class="spacer"></div>${badge}
+        </div>
+        <div class="meter"><i style="width:${cover.toFixed(1)}%"></i></div>
+        <div class="row">
+          <span class="meta">пул сейчас закрывает ${cover.toFixed(0)}%</span>
+          <div class="spacer"></div>
+          <button class="btn sm" data-act="gdone">Куплено</button>
+          <button class="btn sm" data-act="gedit">Изменить</button>
+          <button class="icon" data-act="gdel">✕</button>
+        </div>
+      </div>`;
+    }).join(''):'<div class="empty">Целей пока нет. Добавь первую — авто, путешествие, технику.</div>'}
+    </div>
+    <div class="row" style="margin-top:14px">
+      <input class="wide" id="gName" placeholder="Название (напр. Авто)" style="max-width:240px">
+      <input id="gAmount" placeholder="Сумма ₽" style="width:130px">
+      <input type="month" id="gMonth" value="${ymAdd(todayYM(),6)}">
+      <button class="btn primary" id="gAdd">Добавить цель</button>
+    </div>
+    <p class="hint">Прогноз: текущий пул + (месяцы до цели × бонус-сценарий × плановый курс). Сценарии меняются в «Настройках». Когда покупаешь — жми «Куплено»: сумма спишется из пула.</p>
+  </div>`;
+
+  document.getElementById('gAdd').onclick=()=>{
+    const name=document.getElementById('gName').value.trim();
+    const amount=parseNum(document.getElementById('gAmount').value);
+    const tm=document.getElementById('gMonth').value;
+    if(!name||!amount){alert('Нужны название и сумма');return;}
+    state.goals.push({id:uid(),name,amount,targetMonth:tm,done:false,spent:0});
+    save();render();
+  };
+  view.querySelectorAll('.goal').forEach(el=>{
+    el.addEventListener('click',e=>{
+      const btn=e.target.closest('button');if(!btn)return;
+      const g=state.goals.find(x=>x.id===el.dataset.gid);if(!g)return;
+      if(btn.dataset.act==='gdel'){if(confirm('Удалить цель?')){state.goals=state.goals.filter(x=>x.id!==g.id);save();render();}}
+      if(btn.dataset.act==='gdone'){
+        const v=parseNum(prompt('Сколько фактически потрачено, ₽:',g.amount));
+        if(v!=null){g.done=true;g.spent=v;save();render();}
+      }
+      if(btn.dataset.act==='gedit'){
+        const name=prompt('Название:',g.name);if(name===null)return;
+        const amount=parseNum(prompt('Сумма ₽:',g.amount));if(amount==null)return;
+        const tm=prompt('Целевой месяц (ГГГГ-ММ):',g.targetMonth||'');
+        g.name=name||g.name;g.amount=amount;if(tm&&/^\d{4}-\d{2}$/.test(tm))g.targetMonth=tm;
+        save();render();
+      }
+    });
+  });
+}
+
+/* ---- НАСТРОЙКИ ---- */
+function renderSettings(){
+  const s=state.settings;
+  const tIncRows=state.template.incomes.map(t=>`
+    <tr data-tid="${t.id}">
+      <td><input class="wide" data-f="name" value="${esc(t.name)}"></td>
+      <td><select data-f="cur"><option value="RUB" ${t.cur==='RUB'?'selected':''}>₽</option><option value="USD" ${t.cur==='USD'?'selected':''}>$</option></select></td>
+      <td><input data-f="day" value="${t.day??''}" style="width:60px"></td>
+      <td><input data-f="amount" value="${t.amount??''}"></td>
+      <td><button class="icon" data-act="del">✕</button></td>
+    </tr>`).join('');
+  const tExpRows=state.template.expenses.map(t=>`
+    <tr data-tid="${t.id}">
+      <td><input class="wide" data-f="name" value="${esc(t.name)}"></td>
+      <td><input data-f="amount" value="${t.amount??''}"></td>
+      <td><button class="icon" data-act="del">✕</button></td>
+    </tr>`).join('');
+
+  view.innerHTML=`
+  <div class="panel">
+    <h2>Данные</h2>
+    <div class="row">
+      <span class="chip ${fileHandle?'ok':'warn'}"><span class="dot"></span>${fileHandle?'подключён data.json — сохраняется в файл':'данные только в браузере'}</span>
+    </div>
+    <div class="row">
+      ${'showOpenFilePicker'in window?`
+        <button class="btn primary" id="fOpen">Подключить data.json</button>
+        <button class="btn" id="fNew">Создать новый файл</button>
+        ${fileHandle?'<button class="btn" id="fOff">Отключить файл</button>':''}`:
+        '<span class="hint">Этот браузер не умеет писать в файлы (нужен Chrome/Edge/Arc) — используй экспорт/импорт.</span>'}
+      <button class="btn" id="fExp">Экспорт JSON</button>
+      <button class="btn" id="fImp">Импорт JSON</button>
+    </div>
+    <p class="hint">data.json лежит рядом с приложением в папке «ОМП/Финансы» — его видно, можно бэкапить и разбирать в Claude Code.</p>
+  </div>
+  <div class="panel">
+    <h2>Параметры</h2>
+    <div class="row"><label class="f" style="width:280px">Плановый курс $ (для будущих месяцев)</label><input id="sRate" value="${s.planRate}"> <button class="btn sm" id="sRateCbr">Взять курс ЦБ</button></div>
+    <div class="row"><label class="f" style="width:280px">Консервативный бонус, $/мес</label><input id="sCons" value="${s.bonusCons}"></div>
+    <div class="row"><label class="f" style="width:280px">Средний бонус, $/мес</label><input id="sAvg" value="${s.bonusAvg}"></div>
+    <div class="row"><label class="f" style="width:280px">Начало горизонта</label><input type="month" id="sStart" value="${s.horizonStart}"></div>
+  </div>
+  <div class="grid2">
+    <div class="panel">
+      <h2>Шаблон · доходы <span class="note">для новых месяцев</span></h2>
+      <div class="tblwrap"><table id="tInc"><thead><tr><th>Источник</th><th></th><th>День</th><th>Сумма</th><th></th></tr></thead><tbody>${tIncRows}</tbody></table></div>
+      <div class="row" style="margin-top:12px"><button class="btn sm" id="tIncAdd">+ строка</button></div>
+    </div>
+    <div class="panel">
+      <h2>Шаблон · расходы <span class="note">итого ${fmtR(state.template.expenses.reduce((s2,t)=>s2+(t.amount||0),0))}</span></h2>
+      <div class="tblwrap"><table id="tExp"><thead><tr><th>Категория</th><th>Сумма</th><th></th></tr></thead><tbody>${tExpRows}</tbody></table></div>
+      <div class="row" style="margin-top:12px"><button class="btn sm" id="tExpAdd">+ строка</button></div>
+    </div>
+  </div>
+  <p class="hint">Шаблон применяется к месяцам, в которые ты ещё не вносил факты. Уже заполненные месяцы не трогаются — при необходимости жми «Сбросить к шаблону» внутри месяца.</p>`;
+
+  document.getElementById('sRate').addEventListener('change',e=>{const v=parseNum(e.target.value);if(v){s.planRate=v;save();render();}});
+  document.getElementById('sRateCbr').onclick=async e=>{e.target.textContent='…';try{s.planRate=await fetchCbr();save();render();}catch(err){e.target.textContent='Взять курс ЦБ';alert('Нет сети до ЦБ');}};
+  document.getElementById('sCons').addEventListener('change',e=>{const v=parseNum(e.target.value);if(v!=null){s.bonusCons=v;save();render();}});
+  document.getElementById('sAvg').addEventListener('change',e=>{const v=parseNum(e.target.value);if(v!=null){s.bonusAvg=v;save();render();}});
+  document.getElementById('sStart').addEventListener('change',e=>{if(/^\d{4}-\d{2}$/.test(e.target.value)){s.horizonStart=e.target.value;save();render();}});
+  const fOpen=document.getElementById('fOpen');if(fOpen)fOpen.onclick=()=>connectFile(false);
+  const fNew=document.getElementById('fNew');if(fNew)fNew.onclick=()=>connectFile(true);
+  const fOff=document.getElementById('fOff');if(fOff)fOff.onclick=disconnectFile;
+  document.getElementById('fExp').onclick=exportJSON;
+  document.getElementById('fImp').onclick=importJSON;
+
+  function bindTpl(tblId,list){
+    const tbl=document.getElementById(tblId);
+    tbl.addEventListener('change',e=>{
+      const tr=e.target.closest('tr');const t=list.find(x=>x.id===tr.dataset.tid);if(!t)return;
+      const f=e.target.dataset.f;
+      if(f==='name'||f==='cur')t[f]=e.target.value;else t[f]=parseNum(e.target.value);
+      save();render();
+    });
+    tbl.addEventListener('click',e=>{
+      const btn=e.target.closest('button');if(!btn||btn.dataset.act!=='del')return;
+      const tr=e.target.closest('tr');
+      if(confirm('Удалить из шаблона?')){
+        const i=list.findIndex(x=>x.id===tr.dataset.tid);if(i>=0)list.splice(i,1);
+        save();render();
+      }
+    });
+  }
+  bindTpl('tInc',state.template.incomes);
+  bindTpl('tExp',state.template.expenses);
+  document.getElementById('tIncAdd').onclick=()=>{state.template.incomes.push({id:uid(),name:'Новый доход',day:5,cur:'RUB',amount:0});save();render();};
+  document.getElementById('tExpAdd').onclick=()=>{state.template.expenses.push({id:uid(),name:'Новая категория',amount:0});save();render();};
+}
+
+/* ============ init ============ */
+document.getElementById('tabs').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  activeTab=b.dataset.tab;syncTabs();render();
+});
+function syncTabs(){document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===activeTab));}
+window.addEventListener('beforeunload',()=>{localStorage.setItem(LS_KEY,JSON.stringify(state));});
+
+render();
+setSaveChip('local');
+restoreHandle();
+fetchCbr().then(r=>{document.getElementById('cbrNow').textContent=r.toFixed(2)+' ₽';}).catch(()=>{document.getElementById('cbrNow').textContent='офлайн';});
+</script>
+</body>
+</html>
