@@ -241,6 +241,7 @@
   /* inputs / buttons */
   input.inp{font-family:inherit;font-size:inherit;color:inherit;background:transparent;border:none;border-bottom:1px solid var(--rule-2);padding:1px 0;width:100%}
   input.inp:focus{outline:none;border-bottom-color:var(--accent)}
+  input.inp:disabled{opacity:.55;border-bottom-color:transparent;cursor:not-allowed}
   input.inp::placeholder{color:var(--ink-3)}
   input.ni{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;text-align:right;letter-spacing:-.01em}
   input.w70{width:70px} input.w56{width:56px} input.w90{width:90px} input.w120{width:120px} input.w64{width:64px}
@@ -469,6 +470,7 @@ const idb={
 let saveMode='local';
 function save(){
   reconcilePool();
+  state.savedAt=new Date().toISOString();
   localStorage.setItem(LS_KEY,JSON.stringify(state));
   if(fileHandle){
     saveMode='saving';updateChips();
@@ -480,6 +482,14 @@ function save(){
     },500);
   }
 }
+// Выбор более свежей копии: если локальные правки новее файла (например, браузер
+// перезапустился, файл тихо отвалился, а ты продолжал работать) — файл НЕ затирает их,
+// наоборот, локальная версия дописывается в файл. Без штампов — файл главный (как раньше).
+function pickFresher(fileData){
+  const local=loadLocal();
+  if(local&&local.savedAt&&fileData&&fileData.savedAt&&local.savedAt>fileData.savedAt)return{data:local,fromLocal:true};
+  return{data:fileData,fromLocal:false};
+}
 async function restoreHandle(){
   if(!('showOpenFilePicker'in window))return;
   try{
@@ -489,8 +499,16 @@ async function restoreHandle(){
     if(p!=='granted')return;
     fileHandle=h;
     const f=await h.getFile();const text=await f.text();
-    if(text.trim()){const data=JSON.parse(text);if(data&&data.version){state=data;migrate();localStorage.setItem(LS_KEY,JSON.stringify(state));}}
-    saveMode='file';render();
+    if(text.trim()){
+      const data=JSON.parse(text);
+      if(data&&data.version){
+        const pick=pickFresher(data);
+        state=pick.data;migrate();
+        if(pick.fromLocal)save();                                   // локальное свежее — дописываем в файл
+        else localStorage.setItem(LS_KEY,JSON.stringify(state));
+      }
+    }
+    saveMode='file';startSyncLoop();render();
   }catch(e){}
 }
 async function connectFile(create){
@@ -500,8 +518,8 @@ async function connectFile(create){
     else{[h]=await window.showOpenFilePicker({types:[{description:'JSON',accept:{'application/json':['.json']}}]});}
     await h.requestPermission({mode:'readwrite'});
     fileHandle=h;await idb.set('handle',h);
-    if(!create){const f=await h.getFile();const text=await f.text();if(text.trim()){try{const data=JSON.parse(text);if(data&&data.version){state=data;migrate();}}catch(e){}}}
-    saveMode='file';save();render();
+    if(!create){const f=await h.getFile();const text=await f.text();if(text.trim()){try{const data=JSON.parse(text);if(data&&data.version){const pick=pickFresher(data);state=pick.data;migrate();}}catch(e){}}}
+    saveMode='file';save();startSyncLoop();render();
   }catch(e){}
 }
 async function disconnectFile(){fileHandle=null;await idb.del('handle');saveMode='local';render();}
@@ -612,7 +630,8 @@ function render(){
   const H=horizon();
   if(!H.includes(detailYM))detailYM=H.includes(todayYM())?todayYM():H[0];
   const rows=[];let cum=0;
-  H.forEach((ym,i)=>{const t=totals(ym);cum+=t.dPlan;rows.push({ym,i,...t,cum});});
+  // накопление: закрытые месяцы идут по факту, остальные — по плану
+  H.forEach((ym,i)=>{const t=totals(ym);cum+=(t.locked&&t.dFact!=null)?t.dFact:t.dPlan;rows.push({ym,i,...t,cum});});
   const annDelta=annualPlanDelta();
   const annFact=annualFactDelta();
   const endCum=rows.length?rows[rows.length-1].cum:0;
@@ -690,11 +709,11 @@ function secRegister(rows,cur,annDelta,endCum){
         <th class="lft">№</th><th class="lft">Месяц</th>
         <th>Доход<span class="sub">план</span></th><th>Доход<span class="sub">факт</span></th>
         <th>Расход<span class="sub">план</span></th><th>Расход<span class="sub">факт</span></th>
-        <th>Дельта<span class="sub">план</span></th><th>Накопление<span class="sub">итог, ₽</span></th>
+        <th>Дельта<span class="sub">план</span></th><th>Накопление<span class="sub">факт закрытых + план</span></th>
       </tr></thead>
       <tbody>${body}</tbody>
       <tfoot><tr>
-        <td class="no"></td><td class="mon">Итого · год, план</td>
+        <td class="no"></td><td class="mon">Итого · год</td>
         <td class="num">${fmt(sumIp)}</td><td class="num ${anyIf?'':'muted'}">${anyIf?fmt(sumIf):'—'}</td>
         <td class="num">${fmt(sumEp)}</td><td class="num ${anyEf?'':'muted'}">${anyEf?fmt(sumEf):'—'}</td>
         <td class="num dl ${annDelta<0?'neg':''}">${fmtS(annDelta)}</td><td class="num ${endCum<0?'neg':''}">${fmtS(endCum)}</td>
@@ -727,13 +746,13 @@ function secMonth(){
   const ym=detailYM,m=getMonth(ym),t=totals(ym),mat=!!state.months[ym];
   const locked=!!m.locked;
 
+  const dis=locked?' disabled':'';
   const catRows=m.expenses.map(e=>{
-    const vari=e.closed&&e.fact!=null?e.fact-e.plan:null;
     return `<div class="cat ${e.closed?'done':''}" data-eid="${e.id}">
       <span class="mk" data-act="toggle" title="${e.closed?'вернуть в план':'отметить погашенным'}"></span>
-      <span class="nm"><input class="inp" data-f="name" value="${esc(e.name)}"></span>
-      <span class="amtw"><input class="inp ni w70 amt plan" data-f="plan" value="${e.plan??''}" title="план"></span>
-      <span class="amtw"><input class="inp ni w70 amt factin" data-f="fact" value="${e.fact??''}" placeholder="факт" title="сколько реально ушло"></span>
+      <span class="nm"><input class="inp" data-f="name" value="${esc(e.name)}"${dis}></span>
+      <span class="amtw"><input class="inp ni w70 amt plan" data-f="plan" value="${e.plan??''}" title="план"${dis}></span>
+      <span class="amtw"><input class="inp ni w70 amt factin" data-f="fact" value="${e.fact??''}" placeholder="факт" title="сколько реально ушло"${dis}></span>
       <button class="del" data-act="edel" title="удалить">✕</button>
     </div>`;
   }).join('');
@@ -764,7 +783,7 @@ function secMonth(){
       <div class="block-label">Доход месяца <span class="r">план ${fmt(t.ip)} ₽</span></div>
       <div class="inc" style="grid-template-columns:1fr auto">
         <span class="nm">Фактически пришло за ${M_NOM[mIdx(ymAdd(ym,-1))]}</span>
-        <span style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><input class="inp ni w120" id="incFact" value="${incFact(ym)??''}" placeholder="факт ₽" inputmode="numeric"><span class="cur" style="width:auto">₽</span></span>
+        <span style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><input class="inp ni w120" id="incFact" value="${incFact(ym)??''}" placeholder="факт ₽" inputmode="numeric"${dis}><span class="cur" style="width:auto">₽</span></span>
       </div>
       <div class="inc-foot"><span>Итого доход</span><span class="num">${fmt(t.if_!=null?t.if_:t.ip)} ₽ · ${t.if_!=null?'факт':'план'}</span></div>
       <p class="hint" style="margin-top:8px">Приходит 5&nbsp;${M_ROD[mIdx(ym)].toLowerCase()} — зп за ${M_NOM[mIdx(ymAdd(ym,-1))]} (пред. месяц). Впиши факт когда придёт (₽ + крипта в ₽). План ${fmt(state.settings.incomePlan)} ₽/мес меняется в «Настройках».${locked?' <b style="color:var(--pos)">Месяц закрыт — правки заморожены, нажми «переоткрыть» чтобы изменить.</b>':''}</p>
@@ -1032,11 +1051,12 @@ function bind(rows){
   });
 
   // income fact (single field)
-  sheet.querySelector('#incFact')?.addEventListener('change',e=>{matM(detailYM).incomeFact=parseNum(e.target.value);save();render();});
+  const isLocked=()=>{const mm=state.months[detailYM];return !!(mm&&mm.locked);};
+  sheet.querySelector('#incFact')?.addEventListener('change',e=>{if(isLocked())return;matM(detailYM).incomeFact=parseNum(e.target.value);save();render();});
 
   // categories
   sheet.querySelectorAll('.cat[data-eid]').forEach(el=>{
-    el.addEventListener('change',e=>{const r=matM(detailYM).expenses.find(x=>x.id===el.dataset.eid);if(!r)return;const f=e.target.dataset.f;if(f==='name')r.name=e.target.value;else r[f]=parseNum(e.target.value);save();render();});
+    el.addEventListener('change',e=>{if(isLocked())return;const r=matM(detailYM).expenses.find(x=>x.id===el.dataset.eid);if(!r)return;const f=e.target.dataset.f;if(f==='name')r.name=e.target.value;else r[f]=parseNum(e.target.value);save();render();});
     el.addEventListener('click',e=>{const btn=e.target.closest('[data-act]');if(!btn)return;const mm=matM(detailYM);if(mm.locked)return;const r=mm.expenses.find(x=>x.id===el.dataset.eid);if(!r)return;
       if(btn.dataset.act==='toggle'){if(r.closed){r.closed=false;r.closedDate=null;}else{r.closed=true;r.closedDate=todayStr();if(r.fact==null)r.fact=r.plan;}save();render();}
       if(btn.dataset.act==='edel'){if(confirm('Удалить категорию из этого месяца?')){mm.expenses=mm.expenses.filter(x=>x.id!==r.id);save();render();}}
@@ -1089,7 +1109,7 @@ function bind(rows){
 
   // bonuses
   sheet.querySelectorAll('.inc[data-bid]').forEach(el=>{
-    el.addEventListener('change',e=>{const b=state.bonuses.find(x=>x.id===el.dataset.bid);if(!b)return;const f=e.target.dataset.f;if(f==='note')b.note=e.target.value;else if(f==='dateM')b.date=e.target.value+'-15';else b[f]=parseNum(e.target.value);save();render();});
+    el.addEventListener('change',e=>{const b=state.bonuses.find(x=>x.id===el.dataset.bid);if(!b)return;const f=e.target.dataset.f;if(f==='note')b.note=e.target.value;else if(f==='dateM'){if(/^\d{4}-\d{2}$/.test(e.target.value))b.date=e.target.value+'-15';}else b[f]=parseNum(e.target.value);save();render();});
     el.addEventListener('click',async e=>{const btn=e.target.closest('button');if(!btn)return;const b=state.bonuses.find(x=>x.id===el.dataset.bid);if(!b)return;
       if(btn.dataset.act==='bdel'){if(confirm('Удалить бонус?')){state.bonuses=state.bonuses.filter(x=>x.id!==b.id);save();render();}}
       if(btn.dataset.act==='bcbr'){btn.textContent='…';try{b.rate=await fetchCbr(b.date);save();render();}catch(err){btn.textContent='ЦБ';alert('Нет курса ЦБ');}}

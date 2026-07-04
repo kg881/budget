@@ -95,8 +95,11 @@ def month_totals(st, ym):
     m = st.get('months', {}).get(ym)
     ip = s.get('incomePlan', 0) or 0
     if not m:
-        return dict(ip=ip, if_=None, ep=0, ef=0, open=0,
-                    closed=0, cats=0, dfact=None, locked=False)
+        # месяц ещё не трогали — в приложении он наследует шаблон расходов
+        tpl = (st.get('template') or {}).get('expenses') or []
+        ep = sum((t.get('amount') or 0) for t in tpl)
+        return dict(ip=ip, if_=None, ep=ep, ef=0, open=ep,
+                    closed=0, cats=len(tpl), dfact=None, locked=False)
     exps = m.get('expenses', [])
     ep = sum((e.get('plan') or 0) for e in exps)
     closed = [e for e in exps if e.get('closed')]
@@ -223,9 +226,8 @@ def build_digest(st):
     last_day = (today.replace(day=28) + datetime.timedelta(days=4)).replace(day=1) - datetime.timedelta(days=1)
     if today.day >= last_day.day - 4 and not t['locked']:
         rem.append('📕 Конец месяца — пора «<b>закрыть месяц</b>» в приложении.')
-    if today.day <= 6 and any(not f.get('_done') for f in funds):
-        if funds:
-            rem.append('✉️ Не забудь «+ мес» по конвертам (взносы за месяц).')
+    if today.day <= 6 and funds:
+        rem.append('✉️ Не забудь «+ мес» по конвертам (взносы за месяц).')
     if rem:
         L.append('<b>Напоминания</b>')
         L.extend('• ' + r for r in rem)
