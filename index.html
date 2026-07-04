@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Бюджет — личный реестр</title>
 <meta name="theme-color" content="#D7D2C4">
-<link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -376,6 +375,20 @@ function sub$(rub){return showUsd()?`<span class="usd">≈ ${usd(rub)}</span>`:'
 
 /* ===================== migrate ===================== */
 function migrate(){
+  // защитный бэкфилл: приложение не должно падать на частичном/битом state
+  // (например, если синком пришла неполная копия). Обязательные поля — с дефолтами.
+  if(!state||typeof state!=='object')state=defaultState();
+  if(!state.settings||typeof state.settings!=='object')state.settings={};
+  const _s=state.settings;
+  if(!/^\d{4}-\d{2}$/.test(_s.horizonStart||''))_s.horizonStart=todayYM();
+  if(!(_s.horizonMonths>=1&&_s.horizonMonths<=36))_s.horizonMonths=12;
+  if(_s.planRate==null)_s.planRate=78;
+  if(_s.incomePlan==null)_s.incomePlan=0;
+  if(!state.template||typeof state.template!=='object')state.template={};
+  if(!Array.isArray(state.template.expenses))state.template.expenses=[];
+  if(!state.months||typeof state.months!=='object')state.months={};
+  if(!Array.isArray(state.goals))state.goals=[];
+  if(!Array.isArray(state.bonuses))state.bonuses=[];
   if(!state.version)state.version=1;
   if(state.version<2){
     Object.values(state.months||{}).forEach(m=>{
@@ -509,6 +522,7 @@ const idb={
   async del(k){const d=await this.db();return new Promise(res=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').delete(k);t.oncomplete=()=>res();});}
 };
 let saveMode='local';
+let devSyncCfg=null,devSyncState='idle',devApplying=false,devPushTimer=null,devLoopTimer=null;
 function save(){
   reconcilePool();
   state.savedAt=new Date().toISOString();
@@ -522,6 +536,7 @@ function save(){
       updateChips();
     },500);
   }
+  if(devSyncCfg&&devSyncCfg.enabled&&!devApplying)scheduleDevPush();
 }
 // Выбор более свежей копии: если локальные правки новее файла (например, браузер
 // перезапустился, файл тихо отвалился, а ты продолжал работать) — файл НЕ затирает их,
@@ -663,6 +678,123 @@ function updateSyncChip(){
   if(st){el.className='mchip '+st[0];el.innerHTML='<span class="dot"></span>'+st[1];}
 }
 
+/* ===================== синхронизация устройств (приватный репо + шифрование) ===================== */
+// Токен и ключ живут ТОЛЬКО здесь (localStorage 'budget-devsync'), не в state —
+// не попадают в экспорт/бэкап/файл/публичный код. Данные в репо зашифрованы (AES-GCM).
+function loadDevCfg(){try{const c=JSON.parse(localStorage.getItem('budget-devsync'));return c&&c.token&&c.key?c:null;}catch(e){return null;}}
+function saveDevCfg(){if(devSyncCfg)localStorage.setItem('budget-devsync',JSON.stringify(devSyncCfg));}
+function clearDevCfg(){devSyncCfg=null;localStorage.removeItem('budget-devsync');}
+function b64enc(bytes){let s='';const ch=0x8000;for(let i=0;i<bytes.length;i+=ch)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+ch));return btoa(s);}
+function b64dec(str){const s=atob(str);const b=new Uint8Array(s.length);for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i);return b;}
+async function devKey(){return crypto.subtle.importKey('raw',b64dec(devSyncCfg.key),{name:'AES-GCM'},false,['encrypt','decrypt']);}
+async function devEncrypt(){const iv=crypto.getRandomValues(new Uint8Array(12));const k=await devKey();const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,new TextEncoder().encode(JSON.stringify(state)));const out=new Uint8Array(12+ct.byteLength);out.set(iv,0);out.set(new Uint8Array(ct),12);return b64enc(out);}
+async function devDecrypt(blob){const raw=b64dec(blob);const iv=raw.slice(0,12),ct=raw.slice(12);const k=await devKey();const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},k,ct);return JSON.parse(new TextDecoder().decode(pt));}
+function ghHeaders(){return{'Authorization':'token '+devSyncCfg.token,'Accept':'application/vnd.github+json'};}
+function devUrl(){return `https://api.github.com/repos/${devSyncCfg.owner}/${devSyncCfg.repo}/contents/${devSyncCfg.path}`;}
+async function ghUser(token){const r=await fetch('https://api.github.com/user',{headers:{'Authorization':'token '+token,'Accept':'application/vnd.github+json'}});if(!r.ok)throw new Error('токен не принят ('+r.status+')');return (await r.json()).login;}
+async function ghEnsureRepo(){
+  const u=`https://api.github.com/repos/${devSyncCfg.owner}/${devSyncCfg.repo}`;
+  let r=await fetch(u,{headers:ghHeaders()});
+  if(r.status===404){r=await fetch('https://api.github.com/user/repos',{method:'POST',headers:ghHeaders(),body:JSON.stringify({name:devSyncCfg.repo,private:true,description:'Encrypted budget sync',auto_init:false})});if(!r.ok)throw new Error('не создать репо ('+r.status+')');}
+  else if(!r.ok)throw new Error('нет доступа к репо ('+r.status+')');
+  else{const j=await r.json();if(j.private===false)throw new Error('репо '+devSyncCfg.repo+' ПУБЛИЧНЫЙ — сделай его приватным и включи синк заново');}
+}
+function devSet(s){devSyncState=s;updateDevChip();}
+async function devPush(retry){
+  if(!devSyncCfg||!devSyncCfg.enabled||devApplying)return;
+  if(!retry&&devSyncCfg.lastPushSavedAt&&state.savedAt&&state.savedAt<=devSyncCfg.lastPushSavedAt)return; // нет новых правок
+  try{
+    devSet('sync');
+    const blob=await devEncrypt();
+    const body={message:'sync '+(state.savedAt||''),content:btoa(blob)};
+    if(devSyncCfg.sha)body.sha=devSyncCfg.sha;
+    const r=await fetch(devUrl(),{method:'PUT',headers:ghHeaders(),body:JSON.stringify(body)});
+    if(r.status===409&&!retry){
+      // sha устарел: другое устройство успело запушить. Подтянуть БЕЗ force —
+      // чужое применится только если новее; наше не затирается.
+      await devPull(false);
+      if(devSyncCfg.lastPushSavedAt&&state.savedAt&&state.savedAt<=devSyncCfg.lastPushSavedAt){devSet('ok');return;}
+      return devPush(true);
+    }
+    if(!r.ok)throw new Error('push '+r.status);
+    const j=await r.json();devSyncCfg.sha=j.content.sha;devSyncCfg.lastPushSavedAt=state.savedAt;devSyncCfg.lastSync=new Date().toISOString();saveDevCfg();
+    devSet('ok');
+  }catch(e){devSet('err');}
+}
+async function devPull(force){
+  if(!devSyncCfg||!devSyncCfg.enabled)return;
+  try{
+    if(!force)devSet('sync');
+    const r=await fetch(devUrl()+'?t='+Date.now(),{headers:ghHeaders(),cache:'no-store'});
+    if(r.status===404){devSyncCfg.sha=null;saveDevCfg();devSet('ok');return;} // файла нет — сбросить sha
+    if(!r.ok)throw new Error('pull '+r.status);
+    const j=await r.json();devSyncCfg.sha=j.sha;
+    let blob=(j.content||'').replace(/\s/g,'');
+    blob=blob?atob(blob):'';
+    if(!blob&&j.download_url){blob=(await (await fetch(j.download_url,{cache:'no-store'})).text()).trim();}
+    if(!blob){devSet('ok');return;}
+    let remote;try{remote=await devDecrypt(blob);}catch(e){devSet('err');return;} // неверный ключ / битый блоб
+    if(remote&&remote.version&&(force||!state.savedAt||(remote.savedAt&&remote.savedAt>state.savedAt))){
+      devApplying=true;
+      state=remote;migrate();
+      localStorage.setItem(LS_KEY,JSON.stringify(state));
+      if(fileHandle){try{const w=await fileHandle.createWritable();await w.write(JSON.stringify(state,null,2));await w.close();}catch(e){}}
+      devSyncCfg.lastPushSavedAt=remote.savedAt;saveDevCfg(); // фиксируем именно remote-штамп
+      devApplying=false;
+      render();
+      // если пользователь успел что-то поправить, пока применялось — допушить
+      if(state.savedAt&&devSyncCfg.lastPushSavedAt&&state.savedAt>devSyncCfg.lastPushSavedAt)scheduleDevPush();
+    }
+    devSyncCfg.lastSync=new Date().toISOString();saveDevCfg();
+    devSet('ok');
+  }catch(e){devSet('err');}
+}
+function scheduleDevPush(){clearTimeout(devPushTimer);devPushTimer=setTimeout(()=>devPush(false),1500);}
+function startDevLoop(){
+  clearInterval(devLoopTimer);
+  if(!devSyncCfg||!devSyncCfg.enabled)return;
+  devPull(false);
+  const sec=Math.max(15,devSyncCfg.intervalSec||30);
+  devLoopTimer=setInterval(()=>{if(!document.hidden)devPull(false);},sec*1000);
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&devSyncCfg&&devSyncCfg.enabled)devPull(false);});
+async function devEnable(token){
+  token=(token||'').trim();if(!token){alert('Вставь GitHub-токен (scope repo)');return;}
+  try{
+    const owner=await ghUser(token);
+    const key=b64enc(crypto.getRandomValues(new Uint8Array(32)));
+    devSyncCfg={enabled:true,token,owner,repo:'budget-data',path:'data.enc',key,sha:null,lastPushSavedAt:null,lastSync:null,intervalSec:30};
+    await ghEnsureRepo();
+    await devPull(false);  // без force: если в репо что-то свежее — подтянется, старьё локальное НЕ затрёт
+    await devPush(true);   // затем записать текущее
+    saveDevCfg();startDevLoop();render();
+    alert('Синхронизация включена. Скопируй «код для второго устройства» и вставь его на айфоне.');
+  }catch(e){clearDevCfg();alert('Не вышло: '+e.message);render();}
+}
+async function devLink(code){
+  try{
+    const o=JSON.parse(atob((code||'').trim()));
+    if(!o.t||!o.o||!o.k)throw new Error('код повреждён');
+    const hasData=(state.months&&Object.keys(state.months).length)||(state.goals&&state.goals.length)||(state.bonuses&&state.bonuses.length);
+    if(hasData&&!confirm('На этом устройстве уже есть данные бюджета — заменить их данными с первого устройства?'))return;
+    devSyncCfg={enabled:true,token:o.t,owner:o.o,repo:o.r||'budget-data',path:'data.enc',key:o.k,sha:null,lastPushSavedAt:null,lastSync:null,intervalSec:30};
+    await devPull(true);   // забрать данные с первого устройства
+    saveDevCfg();startDevLoop();render();
+    alert('Подключено. Данные с первого устройства подтянуты.');
+  }catch(e){clearDevCfg();alert('Код не подошёл: '+e.message);render();}
+}
+function devCode(){if(!devSyncCfg)return'';return btoa(JSON.stringify({t:devSyncCfg.token,o:devSyncCfg.owner,r:devSyncCfg.repo,k:devSyncCfg.key}));}
+function devDisable(){clearInterval(devLoopTimer);clearDevCfg();render();}
+function devSyncTimeStr(){const s=devSyncCfg&&devSyncCfg.lastSync;if(!s)return'—';const d=new Date(s);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function updateDevChip(){
+  const el=sheet.querySelector('#devChip');if(!el)return;
+  const map={idle:['',''],sync:['warn','синк…'],ok:['ok','устройства '+devSyncTimeStr()],err:['warn','ошибка синка']};
+  const st=devSyncCfg&&devSyncCfg.enabled?(map[devSyncState]||map.idle):null;
+  el.style.display=st?'inline-flex':'none';
+  if(st){el.className='mchip '+st[0];el.innerHTML='<span class="dot"></span>'+st[1];}
+}
+devSyncCfg=loadDevCfg();
+
 /* ===================== render ===================== */
 const sheet=document.getElementById('sheet');
 let cbrNow=null;
@@ -699,6 +831,7 @@ function metaBar(){
     <span><b>Личный финансовый реестр</b></span>
     <span class="grow"></span>
     <button class="curtog ${showUsd()?'on':''}" id="curTog" title="показывать эквивалент в $">₽ ${showUsd()?'+ $':'/ $'}</button>
+    <span class="mchip" id="devChip" style="display:none"><span class="dot"></span></span>
     <span class="mchip" id="syncChip" style="display:none"><span class="dot"></span></span>
     <span class="mchip" id="cbrChip"><span class="dot"></span>ЦБ ${cbrNow?'<b>'+cbrNow.toFixed(2)+' ₽</b>':'…'}</span>
     <span class="mchip ${fileHandle?'ok':'warn'}" id="saveChip"><span class="dot"></span>${fileHandle?'data.json':'браузер'}</span>
@@ -1049,6 +1182,24 @@ function settingsPanel(){
         <div class="set-row"><span class="l">Показывать эквивалент в $</span><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="sShowUsd" ${showUsd()?'checked':''}> <span class="l">${showUsd()?'включено':'выключено'}</span></label></div>
         <p class="hint">Пересчёт по курсу ЦБ (сейчас ${cbrNow?cbrNow.toFixed(2)+' ₽':'загружается…'}), иначе по плановому курсу ${s.planRate} ₽. Дублирует ₽-суммы мелким $-эквивалентом в шапке, целях и конвертах. Тумблер также в верхней панели.</p>
       </div>
+      <div class="set-block">
+        <h3>Синхронизация мак ↔ айфон</h3>
+        ${devSyncCfg&&devSyncCfg.enabled?`
+          <div class="set-row"><span class="l">Статус</span><span class="l" style="color:var(--pos)">включена · ${esc(devSyncCfg.owner)}/${esc(devSyncCfg.repo)} · ${devSyncTimeStr()}</span></div>
+          <div class="set-row" style="border:none"><span class="l">Код для второго устройства (айфона)</span></div>
+          <input class="inp" id="devCodeF" readonly value="•••••••••••••••••••• скрыт — жми «Скопировать»" style="margin:6px 0;font-family:'IBM Plex Mono',monospace;font-size:10px">
+          <div class="set-actions"><button class="btn solid sm" id="devCopy">Скопировать код</button><button class="btn sm" id="devPullNow">Подтянуть сейчас</button><button class="btn sm" id="devOff">Отключить</button></div>
+          <p class="hint">Данные шифруются (AES-256) и лежат в <b>приватном</b> репозитории. Код содержит токен и ключ — <b>секретный, не пересылай где попало</b>. На айфоне: открой ту же ссылку → «На экран Домой» → в настройках вставь этот код в «Устройство 2».</p>
+        `:`
+          <div class="set-row" style="border:none"><span class="l">Устройство 1 (этот мак) — включить</span></div>
+          <input class="inp" id="devToken" type="password" autocomplete="off" placeholder="GitHub-токен (scope repo)" style="margin:6px 0">
+          <div class="set-actions"><button class="btn solid sm" id="devEnable">Включить синхронизацию</button></div>
+          <div class="set-row" style="border:none;margin-top:6px"><span class="l">Устройство 2 (айфон) — вставь код с мака</span></div>
+          <input class="inp" id="devLinkCode" autocomplete="off" placeholder="код синхронизации" style="margin:6px 0;font-family:'IBM Plex Mono',monospace;font-size:10px">
+          <div class="set-actions"><button class="btn sm" id="devLink">Подключить по коду</button></div>
+          <p class="hint">Токен и ключ хранятся только в этом браузере (не в data.json, не в бэкапе, не в публичном коде). Данные в репозитории зашифрованы (AES-256). Подойдёт классический токен со scope <b>repo</b>, но <b>безопаснее fine-grained</b>: github.com → Settings → Developer settings → Fine-grained tokens → доступ только к репо <b>budget-data</b>, права Contents: Read/Write. Тогда даже утечка кода = доступ к одному зашифрованному репо, а не ко всему аккаунту. Синк идёт сам: правки уходят через ~1.5с, подтягиваются на старте/раз в 30с.</p>
+        `}
+      </div>
       <div class="set-block" style="grid-column:1/-1">
         <h3>Шаблон расходов <span class="num" style="font-size:12px;color:var(--ink-3);font-weight:400">${fmt(state.template.expenses.reduce((a,t)=>a+(t.amount||0),0))} ₽</span></h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 36px">${tExp}</div>
@@ -1192,6 +1343,12 @@ function bindSettings(){
   on('#sAvg','change',e=>{const v=parseNum(e.target.value);if(v!=null){s.bonusAvg=v;save();render();}});
   on('#sApplyStats','click',()=>{const st=bonusStats();if(!st){alert('Нет истории бонусов');return;}s.bonusCons=Math.round(st.median);s.bonusAvg=Math.round(st.mean);save();render();});
   on('#sShowUsd','change',e=>{s.showUsd=e.target.checked;save();render();});
+  // синхронизация устройств
+  on('#devEnable','click',()=>devEnable(sheet.querySelector('#devToken').value));
+  on('#devLink','click',()=>devLink(sheet.querySelector('#devLinkCode').value));
+  on('#devCopy','click',()=>{try{navigator.clipboard.writeText(devCode());}catch(e){const t=sheet.querySelector('#devCodeF');if(t){t.value=devCode();t.select();document.execCommand('copy');t.value='•••••••••••••••••••• скрыт';}}const b=sheet.querySelector('#devCopy');const o=b.textContent;b.textContent='скопировано ✓';setTimeout(()=>{b.textContent=o;},1300);});
+  on('#devPullNow','click',()=>devPull(true));
+  on('#devOff','click',()=>{if(confirm('Отключить синхронизацию на этом устройстве? Зашифрованные данные в репозитории останутся, но перестанут синкаться сюда.'))devDisable();});
   // accounts
   on('#acctAdd','click',()=>{state.accounts.push({id:uid(),name:'Новый счёт',cur:'RUB',balance:0});save();render();});
   sheet.querySelectorAll('.acct[data-aid]').forEach(el=>{
@@ -1228,14 +1385,19 @@ function updateChips(){
   const c=sheet.querySelector('#cbrChip');if(c)c.innerHTML=`<span class="dot"></span>ЦБ ${cbrNow?'<b>'+cbrNow.toFixed(2)+' ₽</b>':'…'}`;
   const sc=sheet.querySelector('#saveChip');if(sc){sc.className='mchip '+(saveMode==='file'?'ok':saveMode==='saving'?'warn':fileHandle?'ok':'warn');sc.innerHTML=`<span class="dot"></span>${saveMode==='saving'?'сохраняю…':fileHandle?'data.json':'браузер'}`;}
   updateSyncChip();
+  updateDevChip();
 }
 
 /* ===================== init ===================== */
-if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
+if(location.protocol==='https:'){
+  const ml=document.createElement('link');ml.rel='manifest';ml.href='manifest.webmanifest';document.head.appendChild(ml);
+  if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
 window.addEventListener('beforeunload',()=>{localStorage.setItem(LS_KEY,JSON.stringify(state));});
 render();
 restoreHandle();
 startSyncLoop();
+startDevLoop();
 fetchCbr().then(r=>{cbrNow=r;updateChips();if(showUsd())render();}).catch(()=>{cbrNow=null;const c=sheet.querySelector('#cbrChip');if(c)c.innerHTML='<span class="dot"></span>ЦБ офлайн';});
 </script>
 </body>
