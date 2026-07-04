@@ -26,6 +26,7 @@
 
   .num{font-family:"IBM Plex Mono",monospace;font-feature-settings:"tnum" 1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
   .rub{color:var(--ink-2);font-size:.72em;padding-left:.15em;font-weight:500}
+  .usd{color:var(--ink-3);font-size:.62em;padding-left:.4em;font-weight:500;letter-spacing:0}
   .pos{color:var(--pos)} .neg{color:var(--neg)} .muted{color:var(--ink-3)}
   .kicker{font-size:10.5px;text-transform:uppercase;letter-spacing:.2em;color:var(--ink-2);font-weight:600}
 
@@ -38,6 +39,8 @@
   .meta .mchip.ok .dot{background:var(--pos)} .meta .mchip.warn .dot{background:var(--accent)}
   .meta button.link{appearance:none;background:none;border:none;font:inherit;color:var(--accent-ink);cursor:pointer;text-transform:uppercase;letter-spacing:.08em;padding:0}
   .meta button.link:hover{color:var(--accent);text-decoration:underline}
+  .meta .curtog{border:1px solid var(--rule-2);border-radius:2px;padding:2px 7px;color:var(--ink-2)}
+  .meta .curtog.on{border-color:var(--accent);color:var(--accent)}
 
   /* masthead */
   .masthead{display:grid;grid-template-columns:1fr auto;gap:36px;align-items:end;padding:26px 0 22px;border-bottom:2px solid var(--ink);position:relative}
@@ -92,6 +95,7 @@
   table.reg tr.now td.mon{font-weight:700}
   table.reg tr.detail td{box-shadow:inset 0 0 0 9999px rgba(28,26,22,.035)}
   .tag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent-line);padding:1px 5px;margin-left:8px;vertical-align:1px;font-weight:600}
+  .lockb{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--pos);border:1px solid rgba(85,106,52,.4);padding:1px 4px;margin-left:7px;vertical-align:1px;font-weight:600}
   .factnote{display:block;font-size:10px;color:var(--accent-ink);margin-top:2px;letter-spacing:0}
   table.reg tfoot td{padding:12px 0 2px;text-align:right;border-top:2px solid var(--ink);font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;color:var(--ink)}
   table.reg tfoot td:not(.no):not(.mon){padding-left:20px}
@@ -121,6 +125,8 @@
   @media(max-width:820px){.ledger{padding-left:0}}
   .block-label{font-size:10px;text-transform:uppercase;letter-spacing:.15em;color:var(--ink-2);font-weight:600;display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
   .block-label .r{font-family:"IBM Plex Mono",monospace;letter-spacing:.04em;color:var(--ink-3)}
+  .mlock .cat .mk,.mlock .addcat,.mlock #incFact,.mlock .cat .del,.mlock .cat .nm input{pointer-events:none;opacity:.6}
+  .mlock-note{margin-top:6px;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--pos)}
 
   /* income rows */
   .inc{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--rule)}
@@ -130,7 +136,7 @@
   .inc-foot .num{font-size:13px;font-weight:600;color:var(--ink)}
 
   /* category rows */
-  .cat{display:grid;grid-template-columns:16px 1fr 90px auto;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--rule)}
+  .cat{display:grid;grid-template-columns:16px 1fr 78px 78px auto;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--rule)}
   .cat .mk{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--ink-2);cursor:pointer;transition:.12s;background:transparent}
   .cat .mk:hover{border-color:var(--accent)}
   .cat.done .mk{background:var(--accent);border-color:var(--accent)}
@@ -138,19 +144,22 @@
   .cat.done .nm{color:var(--ink-2)}
   .cat .amtw{text-align:right}
   .cat .amt{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--ink)}
-  .cat.done .amt{color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:1px}
+  .cat.done .plan{color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:1px}
+  .cat .factin{opacity:0;transition:.12s}
+  .cat.done .factin,.cat:hover .factin{opacity:1}
   .cat .del{appearance:none;background:none;border:none;color:var(--ink-3);cursor:pointer;font-size:13px;line-height:1;padding:2px 4px;opacity:0;transition:.12s}
   .cat:hover .del{opacity:1} .cat .del:hover{color:var(--neg)}
-  .addcat{display:flex;gap:8px;align-items:center;padding:10px 0 0}
-  .cats-foot{display:grid;grid-template-columns:16px 1fr 90px auto;gap:10px;padding-top:12px;margin-top:2px;border-top:2px solid var(--ink)}
+  .addcat{display:flex;gap:8px;align-items:center;padding:10px 0 0;flex-wrap:wrap}
+  .cats-foot{display:grid;grid-template-columns:16px 1fr 78px 78px auto;gap:9px;padding-top:12px;margin-top:2px;border-top:2px solid var(--ink)}
   .cats-foot .lb{grid-column:2;font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-2);font-weight:600;align-self:center}
-  .cats-foot .amt{grid-column:3;text-align:right;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:14px;font-weight:600}
+  .cats-foot .amt{text-align:right;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:14px;font-weight:600}
 
   /* ledger entries */
   .entry{display:grid;grid-template-columns:auto 1fr auto auto;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule)}
   .entry .d{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-2);white-space:nowrap}
   .entry .nm{font-size:12.5px;color:var(--ink-2)}
   .entry .paid{display:inline-block;margin-left:8px;font-family:"IBM Plex Mono",monospace;font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent-line);padding:1px 5px;vertical-align:1px;font-weight:600}
+  .entry .vari{display:inline-block;margin-left:6px;font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.04em}
   .entry .a{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:1px;white-space:nowrap}
   .entry .re{appearance:none;background:none;border:none;color:var(--ink-3);cursor:pointer;font-size:11px;padding:0 2px}
   .entry .re:hover{color:var(--accent)}
@@ -165,11 +174,16 @@
   .goal{display:grid;grid-template-columns:1fr 1.2fr;gap:40px;align-items:start;padding-bottom:20px;margin-bottom:20px;border-bottom:1px solid var(--rule)}
   .goal:last-of-type{border-bottom:none;margin-bottom:0}
   @media(max-width:820px){.goal{grid-template-columns:1fr;gap:24px}}
-  .g-lab{font-size:10px;text-transform:uppercase;letter-spacing:.15em;color:var(--ink-2);font-weight:600;margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline}
+  .g-lab{font-size:10px;text-transform:uppercase;letter-spacing:.15em;color:var(--ink-2);font-weight:600;margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
   .goal-target{font-family:"Playfair Display",serif;font-weight:800;font-size:42px;line-height:.9;letter-spacing:-.02em}
   .goal-target .rub{font-size:.44em;font-weight:600}
+  .goal-target .usd{font-size:.30em}
   .goal-sub{margin-top:12px;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.03em;color:var(--ink-2);text-transform:uppercase;line-height:1.7}
   .goal-sub b{color:var(--ink)}
+  .gpri{display:inline-flex;gap:2px}
+  .gpri button{appearance:none;background:none;border:1px solid var(--rule-2);color:var(--ink-3);cursor:pointer;font-size:10px;width:19px;height:19px;line-height:1;border-radius:2px}
+  .gpri button:hover{border-color:var(--accent);color:var(--accent)}
+  .prio-badge{font-family:"IBM Plex Mono",monospace;font-size:9px;color:var(--accent);border:1px solid var(--accent-line);padding:1px 5px;border-radius:2px}
   .prog-meta{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-2);margin-bottom:9px}
   .prog-meta .cur{color:var(--accent-ink);font-weight:600}
   .track-big{position:relative;height:14px;background:var(--paper-2);border:1px solid var(--rule-2)}
@@ -185,9 +199,14 @@
   .forecast-box .fc .v{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:17px;font-weight:500;letter-spacing:-.02em}
   .forecast-box .fc .v.neg{color:var(--neg)} .forecast-box .fc .v.pos{color:var(--pos)}
   .forecast-box .fc .s{font-size:10px;color:var(--ink-3);margin-top:4px;letter-spacing:0;text-transform:none;font-family:"Golos Text",sans-serif}
+  .whatif{margin-top:16px;padding:13px 16px;background:var(--paper-2);border:1px solid var(--rule);display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;font-size:12px;color:var(--ink-2);line-height:1.5}
+  .whatif b{color:var(--ink)} .whatif .res{color:var(--accent-ink);font-weight:600;font-family:"IBM Plex Mono",monospace}
+  .whatif input{width:66px}
   .pool{margin-top:20px;padding-top:14px;border-top:1px solid var(--rule)}
   .pool .p-val{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:24px;font-weight:500;letter-spacing:-.02em;margin-top:4px}
   .pool .p-note{font-size:11px;color:var(--ink-2);margin-top:6px;line-height:1.5}
+  .recon{margin-top:14px;padding:10px 14px;background:var(--paper-2);border:1px solid var(--rule);display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-2)}
+  .recon .rv{color:var(--ink);font-weight:500}
   .bmonths{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:2px 24px}
   .bm{display:grid;grid-template-columns:minmax(0,1fr) 68px auto;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--rule)}
   .bm .bmn{font-size:12.5px;white-space:nowrap}
@@ -199,12 +218,24 @@
   .goal-done{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--rule);font-size:12.5px;color:var(--ink-2)}
   .goal-done .a{font-family:"IBM Plex Mono",monospace;color:var(--ink-3)}
 
+  /* sinking funds */
+  .sfund{padding:12px 0;border-bottom:1px solid var(--rule)}
+  .sf-top{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:12px}
+  .sf-top .nm{font-size:13px;color:var(--ink)}
+  .sf-top .mo{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-2);white-space:nowrap}
+  .sf-top .mo input{width:70px}
+  .sf-top .bal{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:14px;color:var(--ink);white-space:nowrap}
+  .sf-top .acts{display:flex;gap:5px}
+  .sf-track{height:6px;background:var(--paper-2);border:1px solid var(--rule-2);position:relative;margin-top:9px}
+  .sf-track .fl{position:absolute;left:0;top:0;bottom:0;background:var(--accent)}
+  .sf-meta{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-top:6px}
+
   /* inputs / buttons */
   input.inp{font-family:inherit;font-size:inherit;color:inherit;background:transparent;border:none;border-bottom:1px solid var(--rule-2);padding:1px 0;width:100%}
   input.inp:focus{outline:none;border-bottom-color:var(--accent)}
   input.inp::placeholder{color:var(--ink-3)}
   input.ni{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;text-align:right;letter-spacing:-.01em}
-  input.w70{width:70px} input.w56{width:56px} input.w90{width:90px} input.w120{width:120px}
+  input.w70{width:70px} input.w56{width:56px} input.w90{width:90px} input.w120{width:120px} input.w64{width:64px}
   input[type=month].inp{font-family:"IBM Plex Mono",monospace;width:auto}
   select.inp{border-bottom:1px solid var(--rule-2);cursor:pointer;width:auto}
   button.btn{appearance:none;background:none;border:1px solid var(--rule-2);color:var(--ink-2);font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:5px 11px;cursor:pointer;border-radius:2px;transition:.12s;font-weight:500}
@@ -212,6 +243,8 @@
   button.btn.solid{background:var(--accent);border-color:var(--accent);color:#fff}
   button.btn.solid:hover{background:var(--accent-ink);color:#fff}
   button.btn.sm{padding:3px 8px;font-size:9.5px}
+  button.btn.pos{border-color:rgba(85,106,52,.5);color:var(--pos)}
+  button.btn.pos:hover{background:rgba(85,106,52,.1)}
   .cbrbtn{border:1px solid var(--accent-line);color:var(--accent-ink);font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.06em;padding:2px 5px;background:none;cursor:pointer;border-radius:2px}
   .cbrbtn:hover{background:var(--accent-soft)}
 
@@ -230,6 +263,7 @@
   .set-actions{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0}
   .tpl{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--rule)}
   .tpl.exp{grid-template-columns:1fr auto auto}
+  .acct{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--rule)}
   .hint{font-size:11px;color:var(--ink-3);line-height:1.6;margin-top:10px}
 
   .colophon{margin-top:34px;padding-top:14px;border-top:1px solid var(--ink);display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
@@ -252,8 +286,8 @@ const M_DAT=['январю','февралю','марту','апрелю','маю
 const uid=()=>'x'+Math.random().toString(36).slice(2,9);
 
 function defaultState(){const ym=todayYM();return{
-  version:3,
-  settings:{planRate:78,incomePlan:0,horizonStart:ym,horizonMonths:12,bonusCons:300,bonusAvg:1000},
+  version:5,
+  settings:{planRate:78,incomePlan:0,horizonStart:ym,horizonMonths:12,bonusCons:300,bonusAvg:1000,showUsd:false},
   template:{
     expenses:[
       {id:'e1',name:'Жильё',amount:0},
@@ -263,6 +297,7 @@ function defaultState(){const ym=todayYM();return{
     ]
   },
   months:{}, bonuses:[], goals:[], bonusHistory:[], bonusOverrides:{},
+  accounts:[], sinkingFunds:[],
   bonusSync:{enabled:false,sheetId:'',gid:'',yearBase:new Date().getFullYear(),intervalSec:60,lastSync:null}
 };}
 
@@ -280,8 +315,14 @@ function mIdx(ym){return Number(ym.split('-')[1])-1;}
 function mYear(ym){return ym.split('-')[0];}
 function fmt(n){if(n==null||isNaN(n))return'—';return new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Math.round(n));}
 function fmtS(n){if(n==null||isNaN(n))return'—';return(n>0?'+':n<0?'−':'')+fmt(Math.abs(n));}
-function parseNum(v){if(v==null)return null;const s=String(v).replace(/[\s ₽]/g,'').replace(',','.');if(s==='')return null;const n=Number(s);return isNaN(n)?null:n;}
+function parseNum(v){if(v==null)return null;const s=String(v).replace(/[\s ₽$]/g,'').replace(',','.');if(s==='')return null;const n=Number(s);return isNaN(n)?null:n;}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+/* dual currency */
+function curRate(){return cbrNow||state.settings.planRate||78;}
+function usd(rub){if(rub==null||isNaN(rub))return'—';return'$'+fmt(rub/curRate());}
+function showUsd(){return !!state.settings.showUsd;}
+function sub$(rub){return showUsd()?`<span class="usd">≈ ${usd(rub)}</span>`:'';}
 
 /* ===================== migrate ===================== */
 function migrate(){
@@ -309,14 +350,32 @@ function migrate(){
     });
     state.version=3;
   }
+  if(state.version<4){
+    // Бюджетный год: июнь 2026 → май 2027 (12 мес), июнь — 1-й месяц.
+    // Доход месяца = деньги, пришедшие 5-го числа (= зп за ПРЕДЫДУЩИЙ месяц); траты — этого же
+    // календарного месяца, покрываются этим доходом. Суммы дохода вносятся вручную — данные не трогаем.
+    state.settings.horizonStart='2026-06';
+    state.settings.horizonMonths=12;
+    state.version=4;
+  }
+  if(state.version<5){
+    // приоритет целей (пул раскладывается по приоритету, без двойного счёта);
+    // блокировка месяца; конверты; счета; двойная валюта.
+    (state.goals||[]).forEach((g,i)=>{if(g.priority==null)g.priority=i+1;});
+    Object.values(state.months||{}).forEach(m=>{if(m.locked===undefined)m.locked=false;});
+    if(state.settings.showUsd===undefined)state.settings.showUsd=false;
+    state.version=5;
+  }
   if(!state.bonusHistory)state.bonusHistory=[];
   if(!state.bonusOverrides)state.bonusOverrides={};
+  if(!state.accounts)state.accounts=[];
+  if(!state.sinkingFunds)state.sinkingFunds=[];
   if(!state.bonusSync)state.bonusSync={enabled:false,sheetId:'',gid:'',yearBase:new Date().getFullYear(),intervalSec:60,lastSync:null};
 }
 
 /* ===================== model helpers ===================== */
 function monthTpl(){return{
-  incomeFact:null,
+  incomeFact:null,locked:false,
   expenses:state.template.expenses.map(t=>({id:uid(),tplId:t.id,name:t.name,plan:t.amount,fact:null,closed:false,closedDate:null})),
 };}
 function getMonth(ym){return state.months[ym]||monthTpl();}
@@ -339,14 +398,33 @@ function totals(ym){
   const dPlan=ip-ep;
   const hasFact=if_!=null||anyClosed;
   const dFact=hasFact?((if_!=null?if_:ip)-efClosed):null;
-  return{ip,if_,ep,efClosed,openSum,anyClosed,closedCount:closed.length,catCount:m.expenses.length,dPlan,dFact,hasFact};
+  return{ip,if_,ep,efClosed,openSum,anyClosed,closedCount:closed.length,catCount:m.expenses.length,dPlan,dFact,hasFact,locked:!!m.locked};
 }
 function annualPlanDelta(){return horizon().reduce((s,ym)=>s+totals(ym).dPlan,0);}
 function annualFactDelta(){let sum=0,mo=0;horizon().forEach(ym=>{const t=totals(ym);if(t.dFact!=null){sum+=t.dFact;mo++;}});return{sum,mo};}
+function lockedFactCum(){let sum=0,mo=0;horizon().forEach(ym=>{const t=totals(ym);if(t.locked&&t.dFact!=null){sum+=t.dFact;mo++;}});return{sum,mo};}
 function endCumulative(){let c=0;horizon().forEach(ym=>c+=totals(ym).dPlan);return c;}
 function poolBalance(){const inn=state.bonuses.reduce((s,b)=>s+bonusRub(b),0);const out=state.goals.filter(g=>g.done).reduce((s,g)=>s+(g.spent||0),0);return inn-out;}
+
+/* пул раскладывается по активным целям в порядке приоритета — без двойного счёта */
+function sortedGoals(){return state.goals.filter(g=>!g.done).slice().sort((a,b)=>(a.priority||99)-(b.priority||99)||(a.targetMonth||'').localeCompare(b.targetMonth||''));}
+function allocatePool(){
+  let rem=poolBalance();const map={};
+  sortedGoals().forEach(g=>{const a=Math.max(0,Math.min(rem,g.amount||0));map[g.id]=a;rem-=a;});
+  return{map,leftover:Math.max(0,rem)};
+}
+/* прогноз с каскадом будущих бонусов по приоритету: раскладываем pool + месяцы*ставка */
+function projectPool(rate,ym){
+  // rate: ₽/мес будущего бонуса; ym: до какого месяца копим (по каждой цели свой срок)
+  let rem=poolBalance()+Math.max(0,ymDiff(todayYM(),ym))*rate;
+  const map={};
+  sortedGoals().forEach(g=>{const a=Math.max(0,Math.min(rem,g.amount||0));map[g.id]=a;rem-=a;});
+  return map;
+}
+function accountsRub(){return (state.accounts||[]).reduce((s,a)=>s+((a.cur==='USD'?(a.balance||0)*curRate():(a.balance||0))),0);}
+function sinkingTotal(){return (state.sinkingFunds||[]).reduce((s,f)=>s+(f.balance||0),0);}
+
 function effBonus(){
-  // sheet history with manual overrides applied
   const ov=state.bonusOverrides||{};
   return (state.bonusHistory||[]).map(x=>{
     const o=ov[x.month];
@@ -413,6 +491,40 @@ async function connectFile(create){
 async function disconnectFile(){fileHandle=null;await idb.del('handle');saveMode='local';render();}
 function exportJSON(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));a.download='budget-'+todayStr()+'.json';a.click();}
 function importJSON(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=async()=>{const f=inp.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(data&&data.version){state=data;migrate();save();render();}else alert('Не похоже на данные бюджета');}catch(e){alert('Не удалось прочитать JSON');}};inp.click();}
+
+/* ===================== шифробэкап (Web Crypto, AES-GCM + PBKDF2) ===================== */
+async function deriveKey(pass,salt,usage){
+  const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,[usage]);
+}
+async function encBackup(){
+  const pass=prompt('Пароль для шифрования бэкапа (запомни — без него не восстановить):');if(!pass)return;
+  try{
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    const iv=crypto.getRandomValues(new Uint8Array(12));
+    const key=await deriveKey(pass,salt,'encrypt');
+    const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(state)));
+    const out=new Uint8Array(16+12+ct.byteLength);out.set(salt,0);out.set(iv,16);out.set(new Uint8Array(ct),28);
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'application/octet-stream'}));a.download='budget-backup-'+todayStr()+'.enc';a.click();
+  }catch(e){alert('Ошибка шифрования: '+e.message);}
+}
+function decBackup(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='.enc';
+  inp.onchange=async()=>{
+    const f=inp.files[0];if(!f)return;
+    const pass=prompt('Пароль от бэкапа:');if(!pass)return;
+    try{
+      const buf=new Uint8Array(await f.arrayBuffer());
+      const salt=buf.slice(0,16),iv=buf.slice(16,28),ct=buf.slice(28);
+      const key=await deriveKey(pass,salt,'decrypt');
+      const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);
+      const data=JSON.parse(new TextDecoder().decode(pt));
+      if(data&&data.version){if(confirm('Восстановить бюджет из бэкапа? Текущие данные заменятся.')){state=data;migrate();save();render();}}
+      else alert('Файл не похож на бэкап бюджета');
+    }catch(e){alert('Не удалось расшифровать — неверный пароль или повреждённый файл.');}
+  };
+  inp.click();
+}
 
 /* ===================== ЦБ ===================== */
 const rateCache={};
@@ -498,6 +610,7 @@ function render(){
     secDelta(rows,cur)+
     secMonth()+
     secGoals(rows,annDelta)+
+    secFunds()+
     settingsPanel()+
     colophon();
 
@@ -509,6 +622,7 @@ function metaBar(){
   return `<div class="meta">
     <span><b>Личный финансовый реестр</b></span>
     <span class="grow"></span>
+    <button class="curtog ${showUsd()?'on':''}" id="curTog" title="показывать эквивалент в $">₽ ${showUsd()?'+ $':'/ $'}</button>
     <span class="mchip" id="syncChip" style="display:none"><span class="dot"></span></span>
     <span class="mchip" id="cbrChip"><span class="dot"></span>ЦБ ${cbrNow?'<b>'+cbrNow.toFixed(2)+' ₽</b>':'…'}</span>
     <span class="mchip ${fileHandle?'ok':'warn'}" id="saveChip"><span class="dot"></span>${fileHandle?'data.json':'браузер'}</span>
@@ -517,7 +631,8 @@ function metaBar(){
 
 function masthead(annDelta,endCum,cur,curT,annFact){
   const factLine=curT?`<b>${fmt(curT.if_)}</b> / <b>${fmt(curT.efClosed)}</b> / <b class="${curT.dFact>=0?'pos':'neg'}">${fmtS(curT.dFact)}</b>`:'—';
-  const factYr=annFact.mo?`<b class="${annFact.sum>=0?'pos':'neg'}">${fmtS(annFact.sum)} ₽</b> · ${annFact.mo} ${annFact.mo===1?'мес закрыт':'мес'}`:'ещё нет закрытых';
+  const lf=lockedFactCum();
+  const factYr=lf.mo?`<b class="${lf.sum>=0?'pos':'neg'}">${fmtS(lf.sum)} ₽</b> · ${lf.mo} ${plural(lf.mo,'мес закрыт','мес закрыто','мес закрыто')}`:(annFact.mo?`<span class="muted">${annFact.mo} мес с фактом, ни один не закрыт</span>`:'ещё нет закрытых');
   return `<header class="masthead">
     <div class="mast-left">
       <div class="kicker">Планер бюджета · горизонт ${state.settings.horizonMonths} мес</div>
@@ -525,10 +640,10 @@ function masthead(annDelta,endCum,cur,curT,annFact){
       <div class="dateline">${ymFull(state.settings.horizonStart)}<span class="bar">—</span>${ymFull(ymAdd(state.settings.horizonStart,state.settings.horizonMonths-1))}<span class="bar">·</span>${state.settings.horizonMonths} ${plural(state.settings.horizonMonths,'месяц','месяца','месяцев')}</div>
     </div>
     <div class="mast-right">
-      <div class="fig"><div class="fig-label">Годовая дельта · план</div><div class="fig-value num ${annDelta>=0?'pos':'neg'}">${fmtS(annDelta)}<span class="rub">₽</span></div></div>
-      <div class="fig"><div class="fig-label">Накопление к ${ymFull(ymAdd(state.settings.horizonStart,state.settings.horizonMonths-1),true)}</div><div class="fig-value num ${endCum<0?'neg':''}">${fmtS(endCum)}<span class="rub">₽</span></div></div>
+      <div class="fig"><div class="fig-label">Годовая дельта · план</div><div class="fig-value num ${annDelta>=0?'pos':'neg'}">${fmtS(annDelta)}<span class="rub">₽</span>${sub$(annDelta)}</div></div>
+      <div class="fig"><div class="fig-label">Накопление к ${ymFull(ymAdd(state.settings.horizonStart,state.settings.horizonMonths-1),true)}</div><div class="fig-value num ${endCum<0?'neg':''}">${fmtS(endCum)}<span class="rub">₽</span>${sub$(endCum)}</div></div>
       <div class="fig small"><div class="fig-label">${cur.split('-')?M_CAP[mIdx(cur)]:''} · факт · доход / расход / дельта</div><div class="fig-value num">${factLine}</div></div>
-      <div class="fig small"><div class="fig-label">Годовая дельта · факт</div><div class="fig-value num">${factYr}</div></div>
+      <div class="fig small"><div class="fig-label">Накоплено фактом · закрытые месяцы</div><div class="fig-value num">${factYr}</div></div>
     </div>
     <div class="stamp"><span>план<br>${mYear(state.settings.horizonStart)}<br>${mYear(ymAdd(state.settings.horizonStart,state.settings.horizonMonths-1))}</span></div>
   </header>`;
@@ -543,7 +658,7 @@ function secRegister(rows,cur,annDelta,endCum){
     const isCur=r.ym===cur,isDet=r.ym===detailYM;
     return `<tr class="${isCur?'now':''} ${isDet&&!isCur?'detail':''}" data-ym="${r.ym}">
       <td class="no num">${String(r.i+1).padStart(2,'0')}</td>
-      <td class="mon">${M_CAP[mIdx(r.ym)]} <span class="yr">${mYear(r.ym).slice(2)}</span>${isCur?'<span class="tag">текущий</span>':''}</td>
+      <td class="mon">${M_CAP[mIdx(r.ym)]} <span class="yr">${mYear(r.ym).slice(2)}</span>${isCur?'<span class="tag">текущий</span>':''}${r.locked?'<span class="lockb">✓</span>':''}</td>
       <td class="num">${fmt(r.ip)}</td>
       <td class="num ${r.if_==null?'muted':''}">${r.if_==null?'—':fmt(r.if_)}</td>
       <td class="num">${fmt(r.ep)}</td>
@@ -594,54 +709,61 @@ function secDelta(rows,cur){
 
 function secMonth(){
   const ym=detailYM,m=getMonth(ym),t=totals(ym),mat=!!state.months[ym];
-  const H=horizon();
+  const locked=!!m.locked;
 
   const catRows=m.expenses.map(e=>{
-    const w=t.ep>0?Math.min(100,(e.plan||0)/t.ep*100):0;
+    const vari=e.closed&&e.fact!=null?e.fact-e.plan:null;
     return `<div class="cat ${e.closed?'done':''}" data-eid="${e.id}">
       <span class="mk" data-act="toggle" title="${e.closed?'вернуть в план':'отметить погашенным'}"></span>
       <span class="nm"><input class="inp" data-f="name" value="${esc(e.name)}"></span>
-      <span class="amtw"><input class="inp ni w90 amt" data-f="plan" value="${e.plan??''}"></span>
+      <span class="amtw"><input class="inp ni w70 amt plan" data-f="plan" value="${e.plan??''}" title="план"></span>
+      <span class="amtw"><input class="inp ni w70 amt factin" data-f="fact" value="${e.fact??''}" placeholder="факт" title="сколько реально ушло"></span>
       <button class="del" data-act="edel" title="удалить">✕</button>
     </div>`;
   }).join('');
 
   const closed=m.expenses.filter(e=>e.closed).slice().sort((a,b)=>(a.closedDate||'').localeCompare(b.closedDate||''));
-  const logRows=closed.length?closed.map(e=>`
-    <div class="entry" data-eid="${e.id}">
+  const logRows=closed.length?closed.map(e=>{
+    const f=e.fact!=null?e.fact:e.plan;const vari=e.fact!=null?e.fact-e.plan:0;
+    const vtag=e.fact!=null&&vari!==0?`<span class="vari ${vari>0?'neg':'pos'}">${vari>0?'+':'−'}${fmt(Math.abs(vari))}</span>`:'';
+    return `<div class="entry" data-eid="${e.id}">
       <span class="d num">${ddmm(e.closedDate)}</span>
-      <span class="nm">${esc(e.name)} <span class="paid">погашено</span></span>
-      <span class="a num">${fmt(e.fact!=null?e.fact:e.plan)}</span>
+      <span class="nm">${esc(e.name)} <span class="paid">погашено</span>${vtag}</span>
+      <span class="a num">${fmt(f)}</span>
       <button class="re" data-act="reopen" title="вернуть в план">↺</button>
-    </div>`).join(''):'<div class="empty">Ещё ничего не закрыто. Отметь категорию слева — она уйдёт сюда.</div>';
+    </div>`;}).join(''):'<div class="empty">Ещё ничего не закрыто. Отметь категорию слева — она уйдёт сюда.</div>';
 
-  return `<section class="sec">
+  const closeCtl=locked
+    ? `<button class="link resetm" style="color:var(--accent-ink)">переоткрыть месяц</button>`
+    : `<button class="link" id="closeMonth" style="color:var(--pos)">закрыть месяц ✓</button>${mat?` · <button class="link resetm" style="color:var(--accent-ink)">сброс к шаблону</button>`:''}`;
+
+  return `<section class="sec ${locked?'mlock':''}">
     <div class="sec-head">
       <span class="idx">03</span>
-      <h2><button class="navbtn" id="pM">‹</button> <span class="navm">${M_CAP[mIdx(ym)]} ${mYear(ym)}</span> <button class="navbtn" id="nM">›</button></h2>
-      <span class="sec-note">погашено <b>${t.closedCount} из ${t.catCount}</b> · ${fmt(t.efClosed)} ₽ · осталось ${fmt(t.openSum)} ₽${mat?` · <button class="link resetm" style="color:var(--accent-ink)">сброс к шаблону</button>`:' · по шаблону'}</span>
+      <h2><button class="navbtn" id="pM">‹</button> <span class="navm">${M_CAP[mIdx(ym)]} ${mYear(ym)}</span> <button class="navbtn" id="nM">›</button>${locked?'<span class="lockb">закрыт</span>':''}</h2>
+      <span class="sec-note">погашено <b>${t.closedCount} из ${t.catCount}</b> · ${fmt(t.efClosed)} ₽ · осталось ${fmt(t.openSum)} ₽ · ${closeCtl}</span>
     </div>
 
     <div style="margin-bottom:26px">
       <div class="block-label">Доход месяца <span class="r">план ${fmt(t.ip)} ₽</span></div>
       <div class="inc" style="grid-template-columns:1fr auto">
-        <span class="nm">Фактически пришло за ${M_ROD[mIdx(ym)].toLowerCase()}</span>
+        <span class="nm">Фактически пришло за ${M_NOM[mIdx(ymAdd(ym,-1))]}</span>
         <span style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><input class="inp ni w120" id="incFact" value="${incFact(ym)??''}" placeholder="факт ₽" inputmode="numeric"><span class="cur" style="width:auto">₽</span></span>
       </div>
       <div class="inc-foot"><span>Итого доход</span><span class="num">${fmt(t.if_!=null?t.if_:t.ip)} ₽ · ${t.if_!=null?'факт':'план'}</span></div>
-      <p class="hint" style="margin-top:8px">5-го числа впиши, сколько реально пришло (рубли + крипта в рублях). План 256 000 ₽/мес меняется в «Настройках».</p>
+      <p class="hint" style="margin-top:8px">Приходит 5&nbsp;${M_ROD[mIdx(ym)].toLowerCase()} — зп за ${M_NOM[mIdx(ymAdd(ym,-1))]} (пред. месяц). Впиши факт когда придёт (₽ + крипта в ₽). План ${fmt(state.settings.incomePlan)} ₽/мес меняется в «Настройках».${locked?' <b style="color:var(--pos)">Месяц закрыт — правки заморожены, нажми «переоткрыть» чтобы изменить.</b>':''}</p>
     </div>
 
     <div class="month-grid">
       <div class="cats">
-        <div class="block-label">Категории расхода <span class="r">план ${fmt(t.ep)} ₽</span></div>
+        <div class="block-label">Категории расхода <span class="r">план ${fmt(t.ep)} · факт ${fmt(t.efClosed)} ₽</span></div>
         ${catRows}
         <div class="addcat">
           <input class="inp" id="newCatName" placeholder="Новая категория" style="max-width:170px">
           <input class="inp ni w90" id="newCatAmt" placeholder="сумма">
           <button class="btn sm" id="addCat">+ добавить</button>
         </div>
-        <div class="cats-foot"><span class="lb">Всего по плану</span><span class="amt num">${fmt(t.ep)}</span></div>
+        <div class="cats-foot"><span class="lb">Всего по плану</span><span class="amt num" style="grid-column:3/-1">${fmt(t.ep)}</span></div>
       </div>
       <div class="ledger">
         <div class="block-label">Журнал закрытых <span class="r">${M_SH[mIdx(ym)]} · ${closed.length} ${closed.length===1?'запись':'записей'}</span></div>
@@ -662,37 +784,43 @@ function secGoals(rows,annDelta){
   const rate=s.planRate||78;
   const consRub=(s.bonusCons||0)*rate, avgRub=(s.bonusAvg||0)*rate;
   const stats=bonusStats();
-  const active=state.goals.filter(g=>!g.done);
+  const active=sortedGoals();
   const done=state.goals.filter(g=>g.done);
-  const body=active.length?active.map(g=>{
+  const alloc=allocatePool();
+  const body=active.length?active.map((g,gi)=>{
     const mLeft=Math.max(0,ymDiff(todayYM(),g.targetMonth||todayYM()));
-    const projCons=pool+mLeft*consRub;
-    const projAvg=pool+mLeft*avgRub;
-    const pct=Math.min(100,pool/g.amount*100);
-    const pctCons=Math.min(100,projCons/g.amount*100);
+    const have=alloc.map[g.id]||0;                       // моя доля пула сейчас (по приоритету)
+    const projCons=(projectPool(consRub,g.targetMonth||todayYM())[g.id])||0;
+    const projAvg=(projectPool(avgRub,g.targetMonth||todayYM())[g.id])||0;
+    const pct=Math.min(100,have/g.amount*100);
     const pctAvg=Math.min(100,projAvg/g.amount*100);
     const gapAvg=g.amount-projAvg, gapCons=g.amount-projCons;
-    const need=g.amount-pool;
+    const need=g.amount-have;
     const tempoNeed=mLeft>0?need/mLeft:need;
     let badge;
-    if(pool>=g.amount)badge='<span class="cur" style="color:var(--pos)">пул уже покрывает</span>';
+    if(have>=g.amount)badge='<span class="cur" style="color:var(--pos)">доля пула уже покрывает</span>';
     else if(projCons>=g.amount)badge='<span class="cur" style="color:var(--pos)">успеваешь даже консервативно</span>';
     else if(projAvg>=g.amount)badge='<span class="cur">хватит при среднем бонусе</span>';
     else badge='<span class="cur" style="color:var(--neg)">не хватает даже при среднем</span>';
+    const canUp=gi>0,canDown=gi<active.length-1;
     return `<div class="goal" data-gid="${g.id}">
       <div class="goal-left">
-        <div class="g-lab"><span>Цель «${esc(g.name)}»</span><button class="btn sm" data-act="gedit">изм.</button></div>
-        <div class="goal-target num">${fmt(g.amount)}<span class="rub"> ₽</span></div>
-        <div class="goal-sub">собрано <b>${fmt(pool)} ₽</b> · <b>${pct.toFixed(1)}%</b><br>осталось <b>${fmt(Math.max(0,need))} ₽</b><br>нужен бонус <b>${fmt(tempoNeed)} ₽/мес</b> ≈ <b>$${fmt(tempoNeed/rate)}</b><br>срок ${g.targetMonth?ymDat(g.targetMonth):'—'} · ${mLeft} мес</div>
+        <div class="g-lab"><span><span class="prio-badge">#${gi+1}</span> Цель «${esc(g.name)}»</span><span style="display:flex;gap:6px;align-items:center"><span class="gpri"><button data-act="gup" ${canUp?'':'disabled style=opacity:.3'} title="выше приоритет">↑</button><button data-act="gdown" ${canDown?'':'disabled style=opacity:.3'} title="ниже приоритет">↓</button></span><button class="btn sm" data-act="gedit">изм.</button></span></div>
+        <div class="goal-target num">${fmt(g.amount)}<span class="rub"> ₽</span>${sub$(g.amount)}</div>
+        <div class="goal-sub">доля пула <b>${fmt(have)} ₽</b> · <b>${pct.toFixed(1)}%</b><br>осталось <b>${fmt(Math.max(0,need))} ₽</b><br>нужен бонус <b>${fmt(tempoNeed)} ₽/мес</b> ≈ <b>$${fmt(tempoNeed/rate)}</b><br>срок ${g.targetMonth?ymDat(g.targetMonth):'—'} · ${mLeft} мес</div>
       </div>
       <div class="goal-right">
-        <div class="prog-meta"><span class="cur">факт ${pct.toFixed(1)}%</span>${badge}<span>цель 100%</span></div>
+        <div class="prog-meta"><span class="cur">доля ${pct.toFixed(1)}%</span>${badge}<span>цель 100%</span></div>
         <div class="track-big"><div class="forecast" style="width:${pctAvg.toFixed(1)}%"></div><div class="fill" style="width:${pct.toFixed(1)}%"></div></div>
         <div class="ticks"><div class="tk">0</div><div class="tk">25%</div><div class="tk">50%</div><div class="tk">75%</div></div>
         <div class="forecast-box">
           <div class="fc"><div class="k">Прогноз · консерв ($${fmt(s.bonusCons)}/мес)</div><div class="v num ${projCons>=g.amount?'pos':''}">${fmt(projCons)}</div><div class="s">${gapCons>0?'−'+fmt(gapCons)+' до цели':'цель закрыта'}</div></div>
           <div class="fc"><div class="k">Прогноз · средний ($${fmt(s.bonusAvg)}/мес)</div><div class="v num ${projAvg>=g.amount?'pos':''}">${fmt(projAvg)}</div><div class="s">${gapAvg>0?'−'+fmt(gapAvg)+' до цели':'+'+fmt(-gapAvg)+' сверх'}</div></div>
           <div class="fc"><div class="k">Готовность к сроку</div><div class="v num">${pctAvg.toFixed(0)}%</div><div class="s">по среднему бонусу</div></div>
+        </div>
+        <div class="whatif" data-gid="${g.id}" data-amount="${g.amount}" data-have="${Math.round(have)}">
+          <span>Что если откладывать по</span><input class="inp ni w64 wibonus" value="${s.bonusAvg}" inputmode="numeric"><span>$/мес —</span>
+          <span class="wiout">цель «${esc(g.name)}» закроется <b class="res">${whatIfMonth(have,g.amount,s.bonusAvg*rate)}</b></span>
         </div>
         <div style="margin-top:14px;display:flex;gap:8px"><button class="btn sm" data-act="gbuy">куплено</button><button class="btn sm" data-act="gdel">удалить</button></div>
       </div>
@@ -708,28 +836,25 @@ function secGoals(rows,annDelta){
       <div class="fc"><div class="k">Медиана · макс</div><div class="v num">$${fmt(stats.median)}</div><div class="s">макс $${fmt(stats.max)}${stats.maxMonth?' ('+M_SH[mIdx(stats.maxMonth)]+' '+mYear(stats.maxMonth).slice(2)+')':''}</div></div>
     </div>`:'';
 
-  const eff=effBonus();
-  const cfg=state.bonusSync||{};
-  const monthsBox=eff.length?`
-    <div class="block-label" style="margin-top:18px">Бонусы по месяцам <span class="r">${cfg.enabled?(syncBlocked()?'синк только в облаке (kg881.github.io/budget)':'синк с таблицей · '+syncTimeStr()+' · <button class="link" id="bSyncNow" style="color:var(--accent-ink)">обновить</button>'):'вручную'}</span></div>
-    <div class="bmonths">
-      ${eff.map(b=>`<div class="bm" data-bm="${b.month}">
-        <span class="bmn">${M_CAP[mIdx(b.month)]} <span class="muted">${mYear(b.month).slice(2)}</span></span>
-        <span class="bmv"><span class="cur" style="color:var(--ink-3)">$</span><input class="inp ni w70" data-f="bval" value="${b.usd??''}" inputmode="decimal"></span>
-        <span class="bmsrc">${b.overridden?`<span style="color:var(--accent-ink)">правка</span> <button class="entry re" data-act="brev" title="вернуть из таблицы">↺</button>`:(cfg.enabled?'<span class="muted">таблица</span>':'')}</span>
-      </div>`).join('')}
+  const accRub=accountsRub();const reconDiff=accRub-pool;
+  const reconBox=state.accounts.length?`
+    <div class="recon">
+      <span>на счетах <span class="rv">${fmt(accRub)} ₽</span></span>
+      <span>бонусный пул <span class="rv">${fmt(pool)} ₽</span></span>
+      <span>конверты <span class="rv">${fmt(sinkingTotal())} ₽</span></span>
+      <span>сверка счета−пул <span class="rv ${Math.abs(reconDiff)>1?(reconDiff<0?'neg':'pos'):''}" style="${Math.abs(reconDiff)>1?(reconDiff<0?'color:var(--neg)':'color:var(--pos)'):''}">${fmtS(reconDiff)} ₽</span></span>
     </div>`:'';
 
   return `<section class="sec">
-    <div class="sec-head"><span class="idx">04</span><h2>Крупные цели</h2><span class="sec-note">копятся из бонусов · прогноз по твоей истории</span></div>
+    <div class="sec-head"><span class="idx">04</span><h2>Крупные цели</h2><span class="sec-note">пул делится по приоритету · прогноз по твоей истории</span></div>
     ${body}
     ${done.length?`<div style="margin-top:16px">${doneRows}</div>`:''}
     <div class="pool">
-      <div class="g-lab"><span>Бонусный пул</span>${stats?`<span style="font-family:'IBM Plex Mono',monospace;color:var(--ink-3);text-transform:none;letter-spacing:0">сценарии из истории: консерв ≈ медиана, средний ≈ среднее</span>`:''}</div>
-      <div class="p-val num ${pool<0?'neg':''}">${fmt(pool)}<span class="rub"> ₽</span></div>
-      <div class="p-note">Плавающие BD-бонусы (начинаются после $3300 продаж/мес) — из них копятся авто и путешествия. История тянется из твоей Google-таблицы; сценарии прогноза считаются по ней.</div>
+      <div class="g-lab"><span>Бонусный пул · остаток после целей ${fmt(alloc.leftover)} ₽</span>${stats?`<span style="font-family:'IBM Plex Mono',monospace;color:var(--ink-3);text-transform:none;letter-spacing:0">консерв ≈ медиана, средний ≈ среднее</span>`:''}</div>
+      <div class="p-val num ${pool<0?'neg':''}">${fmt(pool)}<span class="rub"> ₽</span>${sub$(pool)}</div>
+      <div class="p-note">Плавающие BD-бонусы (начинаются после $3300 продаж/мес) — копятся авто и путешествия. Пул делится между активными целями по приоритету (#1 наполняется первой), поэтому нет двойного счёта. История тянется из твоей Google-таблицы.</div>
+      ${reconBox}
       ${statsBox}
-      ${monthsBox}
       <div class="g-lab" style="margin-top:22px"><span>Отложено в пул</span></div>
       <div id="bonusList" style="margin-top:8px">${bonusRows()}</div>
       <div class="addcat" style="margin-top:8px"><button class="btn sm" id="addBonus">+ отложить в пул</button></div>
@@ -743,6 +868,14 @@ function secGoals(rows,annDelta){
   </section>`;
 }
 function ymDat(ym){return M_DAT[mIdx(ym)]+' '+mYear(ym);}
+function whatIfMonth(have,amount,monthlyRub){
+  const need=amount-have;
+  if(need<=0)return'уже сейчас';
+  if(!monthlyRub||monthlyRub<=0)return'никогда при $0';
+  const n=Math.ceil(need/monthlyRub);
+  if(n>240)return'>20 лет';
+  return'к '+ymDat(ymAdd(todayYM(),n))+' ('+n+' мес)';
+}
 function bonusRows(){
   if(!state.bonuses.length)return'<div class="empty" style="padding:6px 0">Бонусов пока нет.</div>';
   return state.bonuses.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(b=>`
@@ -755,6 +888,34 @@ function bonusRows(){
     </div>`).join('');
 }
 
+function secFunds(){
+  const funds=state.sinkingFunds||[];
+  const rows=funds.length?funds.map(f=>{
+    const cap=Math.max(1,(f.monthly||0)*12);
+    const pct=Math.min(100,(f.balance||0)/cap*100);
+    return `<div class="sfund" data-sfid="${f.id}">
+      <div class="sf-top">
+        <span class="nm"><input class="inp" data-f="name" value="${esc(f.name)}" placeholder="напр. Страховка авто"></span>
+        <span class="mo">ежемес <input class="inp ni" data-f="monthly" value="${f.monthly??''}" placeholder="₽"> ₽</span>
+        <span class="bal">${fmt(f.balance||0)} ₽${sub$(f.balance||0)}</span>
+        <span class="acts"><button class="btn sm pos" data-act="sfmo" title="отложить месячный взнос">+ мес</button><button class="btn sm" data-act="sfspend" title="потратить из конверта">трата</button><button class="btn sm" data-act="sfdel">✕</button></span>
+      </div>
+      <div class="sf-track"><div class="fl" style="width:${pct.toFixed(1)}%"></div></div>
+      <div class="sf-meta"><span>накоплено ${pct.toFixed(0)}% от годового взноса</span><span>цель года ≈ ${fmt(cap)} ₽</span></div>
+    </div>`;
+  }).join(''):'<div class="empty">Конвертов пока нет. Заведи под нерегулярный крупняк — страховку, ТО, отпуск, налоги — и откладывай туда каждый месяц по чуть-чуть.</div>';
+  return `<section class="sec">
+    <div class="sec-head"><span class="idx">05</span><h2>Конверты</h2><span class="sec-note">sinking funds · копишь заранее под нерегулярный крупняк</span></div>
+    ${rows}
+    <div class="addcat" style="margin-top:12px">
+      <input class="inp" id="sfName" placeholder="Новый конверт" style="max-width:200px">
+      <input class="inp ni w90" id="sfMo" placeholder="₽/мес">
+      <button class="btn solid sm" id="sfAdd">+ конверт</button>
+    </div>
+    <p class="hint">Каждый месяц жмёшь «+ мес» — взнос капает в конверт. Когда приходит крупный счёт (страховка, ТО) — «трата» списывает из накопленного, а не бьёт по месячному бюджету.</p>
+  </section>`;
+}
+
 function settingsPanel(){
   const s=state.settings;
   const tExp=state.template.expenses.map(t=>`
@@ -763,13 +924,22 @@ function settingsPanel(){
       <input class="inp ni w90" data-f="amount" value="${t.amount??''}">
       <button class="entry re" data-act="tdel">✕</button>
     </div>`).join('');
+  const accRows=state.accounts.map(a=>`
+    <div class="acct" data-aid="${a.id}">
+      <input class="inp" data-f="name" value="${esc(a.name)}" placeholder="Счёт / кошелёк">
+      <select class="inp" data-f="cur"><option value="RUB" ${a.cur!=='USD'?'selected':''}>₽</option><option value="USD" ${a.cur==='USD'?'selected':''}>$</option></select>
+      <input class="inp ni w90" data-f="balance" value="${a.balance??''}" placeholder="баланс">
+      <button class="entry re" data-act="adel">✕</button>
+    </div>`).join('');
   const fsa='showOpenFilePicker'in window;
   return `<details class="settings" id="settings">
-    <summary><span>Настройки · шаблон · данные</span><span class="chev">›</span></summary>
+    <summary><span>Настройки · шаблон · счета · данные</span><span class="chev">›</span></summary>
     <div class="set-actions">
       ${fsa?`<button class="btn solid" id="fOpen">Подключить data.json</button><button class="btn" id="fNew">Создать файл</button>${fileHandle?'<button class="btn" id="fOff">Отключить файл</button>':''}`:'<span class="hint">Запись в файл поддерживают Chrome / Edge / Arc. Здесь — экспорт/импорт.</span>'}
       <button class="btn" id="fExp">Экспорт JSON</button>
       <button class="btn" id="fImp">Импорт JSON</button>
+      <button class="btn" id="fEnc">Зашифр. бэкап</button>
+      <button class="btn" id="fDec">Восстановить .enc</button>
     </div>
     <div class="set-grid">
       <div class="set-block">
@@ -792,6 +962,17 @@ function settingsPanel(){
         <div class="set-actions"><button class="btn solid sm" id="bsSave">Сохранить и синкнуть</button><button class="btn sm" id="bsNow">Обновить сейчас</button></div>
         <p class="hint">Читается строка «Бонус» из вкладки таблицы (по порядку месяцев). Ссылка хранится только в data.json/браузере — в публичный код не попадает. Правки по месяцу (override) не затираются синком; ↺ возвращает значение из таблицы.</p>
       </div>
+      <div class="set-block">
+        <h3>Счета и сверка <span class="num" style="font-size:12px;color:var(--ink-3);font-weight:400">${fmt(accountsRub())} ₽</span></h3>
+        ${accRows||'<p class="hint" style="margin-top:0">Пока нет счетов. Добавь реальные балансы — приложение будет сверять их с бонусным пулом.</p>'}
+        <div class="addcat"><button class="btn sm" id="acctAdd">+ счёт</button></div>
+        <p class="hint">Раз в месяц вписывай фактические остатки по счетам/кошелькам. Блок «сверка» под целями покажет расхождение между тем, что реально на руках, и накопленным пулом.</p>
+      </div>
+      <div class="set-block">
+        <h3>Отображение</h3>
+        <div class="set-row"><span class="l">Показывать эквивалент в $</span><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="sShowUsd" ${showUsd()?'checked':''}> <span class="l">${showUsd()?'включено':'выключено'}</span></label></div>
+        <p class="hint">Пересчёт по курсу ЦБ (сейчас ${cbrNow?cbrNow.toFixed(2)+' ₽':'загружается…'}), иначе по плановому курсу ${s.planRate} ₽. Дублирует ₽-суммы мелким $-эквивалентом в шапке, целях и конвертах. Тумблер также в верхней панели.</p>
+      </div>
       <div class="set-block" style="grid-column:1/-1">
         <h3>Шаблон расходов <span class="num" style="font-size:12px;color:var(--ink-3);font-weight:400">${fmt(state.template.expenses.reduce((a,t)=>a+(t.amount||0),0))} ₽</span></h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 36px">${tExp}</div>
@@ -805,7 +986,7 @@ function settingsPanel(){
 
 function colophon(){
   return `<footer class="colophon">
-    <span><b>Бюджет</b> · личный реестр · v2</span>
+    <span><b>Бюджет</b> · личный реестр · v3 · закрытие месяца · конверты · пул по приоритету</span>
     <span>Все суммы в ₽, если не указано иное · факт заполняется по мере закрытия периода</span>
     <span>Обновлено ${ddmm(todayStr())}.${mYear(todayYM())}</span>
   </footer>`;
@@ -816,11 +997,23 @@ function bind(rows){
   // register row → select detail month
   sheet.querySelectorAll('table.reg tbody tr').forEach(tr=>tr.addEventListener('click',()=>{detailYM=tr.dataset.ym;render();document.querySelector('.sec-head .navm')?.scrollIntoView({block:'center',behavior:'smooth'});}));
 
+  // currency toggle
+  sheet.querySelector('#curTog')?.addEventListener('click',()=>{state.settings.showUsd=!state.settings.showUsd;save();render();});
+
   // month nav
   const H=horizon();
   sheet.querySelector('#pM')?.addEventListener('click',e=>{e.stopPropagation();const i=H.indexOf(detailYM);if(i>0){detailYM=H[i-1];render();}});
   sheet.querySelector('#nM')?.addEventListener('click',e=>{e.stopPropagation();const i=H.indexOf(detailYM);if(i<H.length-1){detailYM=H[i+1];render();}});
-  sheet.querySelector('.resetm')?.addEventListener('click',()=>{if(confirm('Сбросить месяц к шаблону? Введённые факты и закрытия удалятся.')){delete state.months[detailYM];save();render();}});
+  sheet.querySelector('.resetm')?.addEventListener('click',()=>{
+    const m=state.months[detailYM];
+    if(m&&m.locked){m.locked=false;save();render();return;}
+    if(confirm('Сбросить месяц к шаблону? Введённые факты и закрытия удалятся.')){delete state.months[detailYM];save();render();}
+  });
+  sheet.querySelector('#closeMonth')?.addEventListener('click',()=>{
+    const t=totals(detailYM);
+    if(!t.hasFact){if(!confirm('В месяце ещё нет ни факта дохода, ни закрытых категорий. Всё равно закрыть?'))return;}
+    const m=matM(detailYM);m.locked=true;save();render();
+  });
 
   // income fact (single field)
   sheet.querySelector('#incFact')?.addEventListener('change',e=>{matM(detailYM).incomeFact=parseNum(e.target.value);save();render();});
@@ -828,17 +1021,17 @@ function bind(rows){
   // categories
   sheet.querySelectorAll('.cat[data-eid]').forEach(el=>{
     el.addEventListener('change',e=>{const r=matM(detailYM).expenses.find(x=>x.id===el.dataset.eid);if(!r)return;const f=e.target.dataset.f;if(f==='name')r.name=e.target.value;else r[f]=parseNum(e.target.value);save();render();});
-    el.addEventListener('click',e=>{const btn=e.target.closest('[data-act]');if(!btn)return;const mm=matM(detailYM);const r=mm.expenses.find(x=>x.id===el.dataset.eid);if(!r)return;
+    el.addEventListener('click',e=>{const btn=e.target.closest('[data-act]');if(!btn)return;const mm=matM(detailYM);if(mm.locked)return;const r=mm.expenses.find(x=>x.id===el.dataset.eid);if(!r)return;
       if(btn.dataset.act==='toggle'){if(r.closed){r.closed=false;r.closedDate=null;}else{r.closed=true;r.closedDate=todayStr();if(r.fact==null)r.fact=r.plan;}save();render();}
       if(btn.dataset.act==='edel'){if(confirm('Удалить категорию из этого месяца?')){mm.expenses=mm.expenses.filter(x=>x.id!==r.id);save();render();}}
     });
   });
-  sheet.querySelector('#addCat')?.addEventListener('click',()=>{const nm=sheet.querySelector('#newCatName').value.trim();const am=parseNum(sheet.querySelector('#newCatAmt').value)||0;if(!nm){sheet.querySelector('#newCatName').focus();return;}matM(detailYM).expenses.push({id:uid(),name:nm,plan:am,fact:null,closed:false,closedDate:null});save();render();});
+  sheet.querySelector('#addCat')?.addEventListener('click',()=>{const mm=matM(detailYM);if(mm.locked)return;const nm=sheet.querySelector('#newCatName').value.trim();const am=parseNum(sheet.querySelector('#newCatAmt').value)||0;if(!nm){sheet.querySelector('#newCatName').focus();return;}mm.expenses.push({id:uid(),name:nm,plan:am,fact:null,closed:false,closedDate:null});save();render();});
   sheet.querySelector('#newCatAmt')?.addEventListener('keydown',e=>{if(e.key==='Enter')sheet.querySelector('#addCat').click();});
 
   // journal reopen
   sheet.querySelectorAll('.ledger .entry[data-eid]').forEach(el=>{
-    el.querySelector('[data-act=reopen]')?.addEventListener('click',()=>{const r=matM(detailYM).expenses.find(x=>x.id===el.dataset.eid);if(r){r.closed=false;r.closedDate=null;save();render();}});
+    el.querySelector('[data-act=reopen]')?.addEventListener('click',()=>{const mm=matM(detailYM);if(mm.locked)return;const r=mm.expenses.find(x=>x.id===el.dataset.eid);if(r){r.closed=false;r.closedDate=null;save();render();}});
   });
 
   // goals
@@ -847,10 +1040,29 @@ function bind(rows){
       if(btn.dataset.act==='gdel'){if(confirm('Удалить цель?')){state.goals=state.goals.filter(x=>x.id!==g.id);save();render();}}
       if(btn.dataset.act==='gbuy'){const v=parseNum(prompt('Сколько фактически потрачено, ₽:',g.amount));if(v!=null){g.done=true;g.spent=v;save();render();}}
       if(btn.dataset.act==='gedit'){const name=prompt('Название:',g.name);if(name===null)return;const amount=parseNum(prompt('Сумма ₽:',g.amount));if(amount==null)return;const tm=prompt('Целевой месяц (ГГГГ-ММ):',g.targetMonth||'');g.name=name||g.name;g.amount=amount;if(tm&&/^\d{4}-\d{2}$/.test(tm))g.targetMonth=tm;save();render();}
+      if(btn.dataset.act==='gup'||btn.dataset.act==='gdown'){reprioritize(g.id,btn.dataset.act==='gup'?-1:1);}
+    });
+    // what-if live recompute
+    const wi=el.querySelector('.whatif');
+    wi?.querySelector('.wibonus')?.addEventListener('input',e=>{
+      const amount=Number(wi.dataset.amount),have=Number(wi.dataset.have);
+      const b=parseNum(e.target.value)||0;const rate=state.settings.planRate||78;
+      wi.querySelector('.res').textContent=whatIfMonth(have,amount,b*rate);
     });
   });
   sheet.querySelectorAll('.goal-done[data-gid] [data-act=gdel]').forEach(b=>b.addEventListener('click',()=>{const gid=b.closest('[data-gid]').dataset.gid;if(confirm('Удалить из списка?')){state.goals=state.goals.filter(x=>x.id!==gid);save();render();}}));
-  sheet.querySelector('#gAdd')?.addEventListener('click',()=>{const name=sheet.querySelector('#gName').value.trim();const amount=parseNum(sheet.querySelector('#gAmt').value);const tm=sheet.querySelector('#gMonth').value;if(!name||!amount){alert('Нужны название и сумма');return;}state.goals.push({id:uid(),name,amount,targetMonth:tm,done:false,spent:0});save();render();});
+  sheet.querySelector('#gAdd')?.addEventListener('click',()=>{const name=sheet.querySelector('#gName').value.trim();const amount=parseNum(sheet.querySelector('#gAmt').value);const tm=sheet.querySelector('#gMonth').value;if(!name||!amount){alert('Нужны название и сумма');return;}const maxP=state.goals.reduce((m,g)=>Math.max(m,g.priority||0),0);state.goals.push({id:uid(),name,amount,targetMonth:tm,done:false,spent:0,priority:maxP+1});save();render();});
+
+  // sinking funds
+  sheet.querySelectorAll('.sfund[data-sfid]').forEach(el=>{
+    el.addEventListener('change',e=>{const f=state.sinkingFunds.find(x=>x.id===el.dataset.sfid);if(!f)return;const k=e.target.dataset.f;if(!k)return;if(k==='name')f.name=e.target.value;else f[k]=parseNum(e.target.value)||0;save();render();});
+    el.addEventListener('click',e=>{const btn=e.target.closest('[data-act]');if(!btn)return;const f=state.sinkingFunds.find(x=>x.id===el.dataset.sfid);if(!f)return;
+      if(btn.dataset.act==='sfmo'){f.balance=(f.balance||0)+(f.monthly||0);save();render();}
+      if(btn.dataset.act==='sfspend'){const v=parseNum(prompt('Сколько потрачено из конверта «'+f.name+'», ₽:',f.balance||0));if(v!=null){f.balance=Math.max(0,(f.balance||0)-v);save();render();}}
+      if(btn.dataset.act==='sfdel'){if(confirm('Удалить конверт?')){state.sinkingFunds=state.sinkingFunds.filter(x=>x.id!==f.id);save();render();}}
+    });
+  });
+  sheet.querySelector('#sfAdd')?.addEventListener('click',()=>{const nm=sheet.querySelector('#sfName').value.trim();const mo=parseNum(sheet.querySelector('#sfMo').value)||0;if(!nm){sheet.querySelector('#sfName').focus();return;}state.sinkingFunds.push({id:uid(),name:nm,monthly:mo,balance:0});save();render();});
 
   // bonuses
   sheet.querySelectorAll('.inc[data-bid]').forEach(el=>{
@@ -862,21 +1074,21 @@ function bind(rows){
   });
   sheet.querySelector('#addBonus')?.addEventListener('click',()=>{state.bonuses.push({id:uid(),date:detailYM+'-15',usd:null,rate:null,rub:null,note:''});save();render();});
 
-  // per-month bonus override
-  sheet.querySelector('#bSyncNow')?.addEventListener('click',()=>syncBonuses(true));
-  sheet.querySelectorAll('.bm[data-bm]').forEach(el=>{
-    const m=el.dataset.bm;
-    el.querySelector('[data-f=bval]')?.addEventListener('change',e=>{
-      const v=parseNum(e.target.value);
-      const sheetVal=(state.bonusHistory.find(x=>x.month===m)||{}).usd;
-      if(v==null||v===sheetVal)delete state.bonusOverrides[m];else state.bonusOverrides[m]=v;
-      save();render();
-    });
-    el.querySelector('[data-act=brev]')?.addEventListener('click',()=>{delete state.bonusOverrides[m];save();render();});
-  });
-
   // settings
   bindSettings();
+}
+
+function reprioritize(gid,dir){
+  const list=sortedGoals();
+  const i=list.findIndex(g=>g.id===gid);
+  const j=i+dir;
+  if(i<0||j<0||j>=list.length)return;
+  const a=list[i],b=list[j];
+  const pa=a.priority,pb=b.priority;
+  a.priority=pb;b.priority=pa;
+  // нормализуем на случай равных приоритетов
+  sortedGoals().forEach((g,k)=>g.priority=k+1);
+  save();render();
 }
 
 function bindSettings(){
@@ -887,12 +1099,21 @@ function bindSettings(){
   on('#fOff','click',disconnectFile);
   on('#fExp','click',exportJSON);
   on('#fImp','click',importJSON);
+  on('#fEnc','click',encBackup);
+  on('#fDec','click',decBackup);
   on('#sIncPlan','change',e=>{const v=parseNum(e.target.value);if(v!=null){s.incomePlan=v;save();render();}});
   on('#sRate','change',e=>{const v=parseNum(e.target.value);if(v){s.planRate=v;save();render();}});
   on('#sRateCbr','click',async e=>{e.target.textContent='…';try{s.planRate=await fetchCbr();save();render();}catch(err){alert('Нет ЦБ');}});
   on('#sCons','change',e=>{const v=parseNum(e.target.value);if(v!=null){s.bonusCons=v;save();render();}});
   on('#sAvg','change',e=>{const v=parseNum(e.target.value);if(v!=null){s.bonusAvg=v;save();render();}});
   on('#sApplyStats','click',()=>{const st=bonusStats();if(!st){alert('Нет истории бонусов');return;}s.bonusCons=Math.round(st.median);s.bonusAvg=Math.round(st.mean);save();render();});
+  on('#sShowUsd','change',e=>{s.showUsd=e.target.checked;save();render();});
+  // accounts
+  on('#acctAdd','click',()=>{state.accounts.push({id:uid(),name:'Новый счёт',cur:'RUB',balance:0});save();render();});
+  sheet.querySelectorAll('.acct[data-aid]').forEach(el=>{
+    el.addEventListener('change',e=>{const a=state.accounts.find(x=>x.id===el.dataset.aid);if(!a)return;const f=e.target.dataset.f;if(f==='name')a.name=e.target.value;else if(f==='cur')a.cur=e.target.value;else a[f]=parseNum(e.target.value)||0;save();render();});
+    el.querySelector('[data-act=adel]')?.addEventListener('click',()=>{if(confirm('Удалить счёт?')){state.accounts=state.accounts.filter(x=>x.id!==el.dataset.aid);save();render();}});
+  });
   // bonus sync config
   on('#bsSave','click',()=>{
     const url=sheet.querySelector('#bsUrl').value.trim();
@@ -930,7 +1151,7 @@ window.addEventListener('beforeunload',()=>{localStorage.setItem(LS_KEY,JSON.str
 render();
 restoreHandle();
 startSyncLoop();
-fetchCbr().then(r=>{cbrNow=r;updateChips();}).catch(()=>{cbrNow=null;const c=sheet.querySelector('#cbrChip');if(c)c.innerHTML='<span class="dot"></span>ЦБ офлайн';});
+fetchCbr().then(r=>{cbrNow=r;updateChips();if(showUsd())render();}).catch(()=>{cbrNow=null;const c=sheet.querySelector('#cbrChip');if(c)c.innerHTML='<span class="dot"></span>ЦБ офлайн';});
 </script>
 </body>
 </html>
