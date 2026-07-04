@@ -2,8 +2,16 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- maximum-scale=1 гасит авто-зум iOS при фокусе на инпутах (<16px); pinch-зум при этом работает -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Бюджет — личный реестр</title>
+<meta name="theme-color" content="#D7D2C4">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Бюджет">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='84' font-family='Georgia,serif' font-weight='800'>Б</text><circle cx='88' cy='84' r='9' fill='%23B0611A'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -277,6 +285,39 @@
 
   .colophon{margin-top:34px;padding-top:14px;border-top:1px solid var(--ink);display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
   .colophon b{color:var(--ink-2);font-weight:600}
+  /* ===== мобильная вёрстка (айфон) ===== */
+  @media(max-width:720px){
+    /* реестр: на телефоне остаются № · Месяц · Дельта (+факт) · Накопление */
+    table.reg th:nth-child(n+3):nth-child(-n+6),table.reg td:nth-child(n+3):nth-child(-n+6){display:none}
+    .col .cap{display:none}
+    .col.cur .cap{display:block}
+    .navbtn{width:32px;height:32px;font-size:14px}
+    .cat .mk{width:15px;height:15px}
+    .sec-head{flex-wrap:wrap;row-gap:6px}
+    .sec-note{margin-left:0;flex-basis:100%;text-align:left;order:9}
+  }
+  @media(max-width:600px){
+    .forecast-box{grid-template-columns:1fr}
+    .forecast-box .fc{padding:10px 0}
+    .forecast-box .fc:not(:first-child){padding-left:0}
+    /* строка бонуса (месяц·за что·$·курс·₽) не влезает грид-строкой — переносим */
+    .inc[data-bid]{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+    .inc[data-bid] .nm{flex:1 1 130px}
+  }
+  @media(max-width:480px){
+    body{padding:16px 8px 44px}
+    .sheet{padding:20px 14px 24px}
+    table.reg tr.now td.no::before{left:-14px}
+    .tag{display:none}
+    .wordmark{font-size:54px}
+    input.w120{width:96px}
+  }
+  /* тач-устройства: hover-кнопки должны быть видимы всегда */
+  @media(hover:none){
+    .cat .del{opacity:.45}
+    .cat .factin{opacity:1}
+    .entry .re{padding:2px 6px}
+  }
   ::selection{background:var(--accent-soft)}
   @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -1190,6 +1231,7 @@ function updateChips(){
 }
 
 /* ===================== init ===================== */
+if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
 window.addEventListener('beforeunload',()=>{localStorage.setItem(LS_KEY,JSON.stringify(state));});
 render();
 restoreHandle();
