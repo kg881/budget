@@ -29,6 +29,7 @@ import argparse
 import datetime
 import urllib.request
 import urllib.parse
+import html as _html
 
 M_CAP = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август',
          'Сентябрь','Октябрь','Ноябрь','Декабрь']
@@ -90,7 +91,7 @@ def signed(n):
 
 # ---------- расчёты (зеркалят логику приложения) ----------
 def month_totals(st, ym):
-    s = st['settings']
+    s = st.get('settings') or {}
     m = st.get('months', {}).get(ym)
     ip = s.get('incomePlan', 0) or 0
     if not m:
@@ -110,29 +111,34 @@ def month_totals(st, ym):
                 locked=bool(m.get('locked')))
 
 
-def pool_balance(st):
-    rate = st['settings'].get('planRate', 78) or 78
+def pool_in(st):
+    rate = (st.get('settings') or {}).get('planRate', 78) or 78
     inn = 0.0
     for b in st.get('bonuses', []):
         if b.get('rub') is not None:
             inn += b['rub']
         elif b.get('usd') is not None:
             inn += b['usd'] * (b.get('rate') or rate)
-    out = sum((g.get('spent') or 0) for g in st.get('goals', []) if g.get('done'))
-    return inn - out
+    return inn
 
 
-def allocate_pool(st):
-    """Пул раскладывается по активным целям в порядке приоритета."""
-    rem = pool_balance(st)
+def pool_total(st):
+    """Всё, что заведено в пул и ещё не потрачено на купленные цели."""
+    spent = sum((g.get('spent') or 0) for g in st.get('goals', []) if g.get('done'))
+    return pool_in(st) - spent
+
+
+def pool_free(st):
+    """Свободно к распределению = всего в пуле − уже разложено по активным целям."""
+    allocated = sum((g.get('saved') or 0) for g in st.get('goals', []) if not g.get('done'))
+    return pool_total(st) - allocated
+
+
+def active_goals(st):
+    """Активные цели с их отложенной суммой (g.saved), в порядке отображения."""
     active = sorted([g for g in st.get('goals', []) if not g.get('done')],
                     key=lambda g: (g.get('priority', 99), g.get('targetMonth', '')))
-    res = []
-    for g in active:
-        a = max(0, min(rem, g.get('amount', 0) or 0))
-        rem -= a
-        res.append((g, a))
-    return res, max(0, rem)
+    return [(g, g.get('saved') or 0) for g in active]
 
 
 def bonus_stats(st):
@@ -156,7 +162,7 @@ def bonus_stats(st):
 def build_digest(st):
     today = datetime.date.today()
     ym = ym_today()
-    s = st['settings']
+    s = st.get('settings') or {}
     rate = s.get('planRate', 78) or 78
     t = month_totals(st, ym)
     L = []
@@ -178,27 +184,25 @@ def build_digest(st):
     L.append('')
 
     # пул и цели
-    alloc, leftover = allocate_pool(st)
-    pool = pool_balance(st)
-    L.append('<b>Бонусный пул: %s ₽</b>' % rub(pool))
+    total = pool_total(st)
+    free = pool_free(st)
+    L.append('<b>Бонусный пул: %s ₽</b> (свободно %s ₽)' % (rub(total), rub(free)))
     stt = bonus_stats(st)
     if stt:
         L.append('• бонусы: медиана $%s · среднее $%s · %d мес' %
                  (rub(stt['median']), rub(stt['mean']), stt['n']))
-    for g, have in alloc[:3]:
+    for g, saved in active_goals(st)[:4]:
         amount = g.get('amount', 0) or 0
-        pct = min(100, have / amount * 100) if amount else 0
-        left = max(0, amount - have)
+        pct = min(100, saved / amount * 100) if amount else 0
+        left = max(0, amount - saved)
         tm = g.get('targetMonth')
         mleft = max(0, ym_diff(ym, tm)) if tm else 0
-        # прогноз по среднему бонусу
+        # прогноз: если весь средний бонус направлять сюда
         avg_rub = (s.get('bonusAvg', 0) or 0) * rate
-        proj = have + mleft * avg_rub
+        proj = saved + mleft * avg_rub
         ok = '✅' if proj >= amount else '⚠️'
-        L.append('• «%s»: %s / %s ₽ (%.0f%%) · до цели %s ₽ %s' %
-                 (g.get('name', '—'), rub(have), rub(amount), pct, rub(left), ok))
-    if leftover > 0:
-        L.append('• свободно в пуле: %s ₽' % rub(leftover))
+        L.append('• «%s»: отложено %s / %s ₽ (%.0f%%) · до цели %s ₽ %s' %
+                 (_html.escape(str(g.get('name', '—'))), rub(saved), rub(amount), pct, rub(left), ok))
     L.append('')
 
     # конверты
@@ -207,7 +211,7 @@ def build_digest(st):
         L.append('<b>Конверты</b>')
         for f in funds:
             L.append('• %s: %s ₽ (взнос %s ₽/мес)' %
-                     (f.get('name', '—'), rub(f.get('balance', 0)), rub(f.get('monthly', 0))))
+                     (_html.escape(str(f.get('name', '—'))), rub(f.get('balance', 0)), rub(f.get('monthly', 0))))
         L.append('')
 
     # напоминания
