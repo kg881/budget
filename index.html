@@ -188,6 +188,14 @@
   .pool{margin-top:20px;padding-top:14px;border-top:1px solid var(--rule)}
   .pool .p-val{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:24px;font-weight:500;letter-spacing:-.02em;margin-top:4px}
   .pool .p-note{font-size:11px;color:var(--ink-2);margin-top:6px;line-height:1.5}
+  .bmonths{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:2px 24px}
+  .bm{display:grid;grid-template-columns:minmax(0,1fr) 68px auto;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--rule)}
+  .bm .bmn{font-size:12.5px;white-space:nowrap}
+  .bm .bmv{display:flex;align-items:center;gap:3px}
+  .bm .bmv input{width:60px}
+  .bm .bmsrc{font-family:"IBM Plex Mono",monospace;font-size:9px;text-transform:uppercase;letter-spacing:.08em;text-align:right;min-width:52px;display:inline-flex;align-items:center;gap:5px;justify-content:flex-end}
+  .bm .bmsrc button{appearance:none;background:none;border:none;color:var(--ink-3);cursor:pointer;font-size:12px;line-height:1;padding:0}
+  .bm .bmsrc button:hover{color:var(--accent)}
   .goal-done{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--rule);font-size:12.5px;color:var(--ink-2)}
   .goal-done .a{font-family:"IBM Plex Mono",monospace;color:var(--ink-3)}
 
@@ -254,7 +262,8 @@ function defaultState(){const ym=todayYM();return{
       {id:'e4',name:'Прочее',amount:0},
     ]
   },
-  months:{}, bonuses:[], goals:[], bonusHistory:[]
+  months:{}, bonuses:[], goals:[], bonusHistory:[], bonusOverrides:{},
+  bonusSync:{enabled:false,sheetId:'',gid:'',yearBase:new Date().getFullYear(),intervalSec:60,lastSync:null}
 };}
 
 let state=loadLocal()||defaultState();
@@ -301,6 +310,8 @@ function migrate(){
     state.version=3;
   }
   if(!state.bonusHistory)state.bonusHistory=[];
+  if(!state.bonusOverrides)state.bonusOverrides={};
+  if(!state.bonusSync)state.bonusSync={enabled:false,sheetId:'',gid:'',yearBase:new Date().getFullYear(),intervalSec:60,lastSync:null};
 }
 
 /* ===================== model helpers ===================== */
@@ -334,8 +345,16 @@ function annualPlanDelta(){return horizon().reduce((s,ym)=>s+totals(ym).dPlan,0)
 function annualFactDelta(){let sum=0,mo=0;horizon().forEach(ym=>{const t=totals(ym);if(t.dFact!=null){sum+=t.dFact;mo++;}});return{sum,mo};}
 function endCumulative(){let c=0;horizon().forEach(ym=>c+=totals(ym).dPlan);return c;}
 function poolBalance(){const inn=state.bonuses.reduce((s,b)=>s+bonusRub(b),0);const out=state.goals.filter(g=>g.done).reduce((s,g)=>s+(g.spent||0),0);return inn-out;}
+function effBonus(){
+  // sheet history with manual overrides applied
+  const ov=state.bonusOverrides||{};
+  return (state.bonusHistory||[]).map(x=>{
+    const o=ov[x.month];
+    return {month:x.month,sheetUsd:x.usd,usd:o!=null?o:x.usd,overridden:o!=null};
+  });
+}
 function bonusStats(){
-  const h=(state.bonusHistory||[]).filter(x=>x.usd!=null&&x.usd>0);
+  const h=effBonus().filter(x=>x.usd!=null&&x.usd>0);
   if(!h.length)return null;
   const vals=h.map(x=>x.usd).slice().sort((a,b)=>a-b);
   const sum=vals.reduce((a,b)=>a+b,0),mean=sum/vals.length;
@@ -405,6 +424,56 @@ async function fetchCbr(dateStr){
   rate=Math.round(rate*100)/100;rateCache[key]=rate;return rate;
 }
 
+/* ===================== bonus sheet sync ===================== */
+const MN_RU={'Январь':1,'Февраль':2,'Март':3,'Апрель':4,'Май':5,'Июнь':6,'Июль':7,'Август':8,'Сентябрь':9,'Октябрь':10,'Ноябрь':11,'Декабрь':12};
+function parseCSV(s){const rows=[];let row=[],cur='',q=false;for(let i=0;i<s.length;i++){const c=s[i];if(q){if(c==='"'){if(s[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}else{if(c==='"')q=true;else if(c===','){row.push(cur);cur='';}else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur='';}else if(c==='\r'){}else cur+=c;}}if(cur!==''||row.length){row.push(cur);rows.push(row);}return rows;}
+function sheetIdFromUrl(u){const m=String(u).match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);return m?m[1]:'';}
+function gidFromUrl(u){const m=String(u).match(/[?#&]gid=(\d+)/);return m?m[1]:'';}
+let syncState='idle'; // idle|sync|ok|err
+async function syncBonuses(manual){
+  const cfg=state.bonusSync;if(!cfg||!cfg.enabled||!cfg.sheetId)return;
+  syncState='sync';updateSyncChip();
+  try{
+    const url=`https://docs.google.com/spreadsheets/d/${cfg.sheetId}/export?format=csv&gid=${cfg.gid||0}`;
+    const r=await fetch(url,{cache:'no-store'});
+    if(!r.ok)throw new Error('http '+r.status);
+    const rows=parseCSV(await r.text());
+    const monthRow=rows.find(r=>r[0]&&r[0].trim()==='Месяц');
+    const bonusRow=rows.find(r=>r[0]&&r[0].trim().startsWith('Бонус'));
+    if(!monthRow||!bonusRow)throw new Error('нет строк «Месяц»/«Бонус»');
+    const months=monthRow.slice(1).map(c=>(c||'').trim()).filter(c=>MN_RU[c]);
+    const vals=bonusRow.slice(1).map(c=>(c||'').trim()).filter(c=>c!=='').map(c=>{const n=Number(c.replace(/[^0-9.,-]/g,'').replace(',','.'));return isNaN(n)?null:n;});
+    const yb=cfg.yearBase||new Date().getFullYear();
+    const hist=months.map((m,i)=>({month:yb+'-'+String(MN_RU[m]).padStart(2,'0'),usd:vals[i]??null}));
+    state.bonusHistory=hist;
+    cfg.lastSync=new Date().toISOString();
+    syncState='ok';save();render();
+    return hist.length;
+  }catch(e){
+    syncState='err';updateSyncChip();
+    if(manual)alert('Не удалось синхронизировать: '+e.message);
+    return null;
+  }
+}
+function syncTimeStr(){const s=state.bonusSync&&state.bonusSync.lastSync;if(!s)return'—';const d=new Date(s);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+let syncTimer=null;
+function startSyncLoop(){
+  clearInterval(syncTimer);
+  const cfg=state.bonusSync;if(!cfg||!cfg.enabled)return;
+  syncBonuses(false);
+  const sec=Math.max(20,cfg.intervalSec||60);
+  syncTimer=setInterval(()=>{if(!document.hidden)syncBonuses(false);},sec*1000);
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&state.bonusSync&&state.bonusSync.enabled)syncBonuses(false);});
+function updateSyncChip(){
+  const el=sheet.querySelector('#syncChip');if(!el)return;
+  const cfg=state.bonusSync;
+  const map={idle:['',''],sync:['warn','синк…'],ok:['ok','таблица '+syncTimeStr()],err:['warn','ошибка синка']};
+  const st=cfg&&cfg.enabled?(map[syncState]||map.idle):null;
+  el.style.display=st?'inline-flex':'none';
+  if(st){el.className='mchip '+st[0];el.innerHTML='<span class="dot"></span>'+st[1];}
+}
+
 /* ===================== render ===================== */
 const sheet=document.getElementById('sheet');
 let cbrNow=null;
@@ -438,6 +507,7 @@ function metaBar(){
   return `<div class="meta">
     <span><b>Личный финансовый реестр</b></span>
     <span class="grow"></span>
+    <span class="mchip" id="syncChip" style="display:none"><span class="dot"></span></span>
     <span class="mchip" id="cbrChip"><span class="dot"></span>ЦБ ${cbrNow?'<b>'+cbrNow.toFixed(2)+' ₽</b>':'…'}</span>
     <span class="mchip ${fileHandle?'ok':'warn'}" id="saveChip"><span class="dot"></span>${fileHandle?'data.json':'браузер'}</span>
   </div>`;
@@ -636,6 +706,18 @@ function secGoals(rows,annDelta){
       <div class="fc"><div class="k">Медиана · макс</div><div class="v num">$${fmt(stats.median)}</div><div class="s">макс $${fmt(stats.max)}${stats.maxMonth?' ('+M_SH[mIdx(stats.maxMonth)]+' '+mYear(stats.maxMonth).slice(2)+')':''}</div></div>
     </div>`:'';
 
+  const eff=effBonus();
+  const cfg=state.bonusSync||{};
+  const monthsBox=eff.length?`
+    <div class="block-label" style="margin-top:18px">Бонусы по месяцам <span class="r">${cfg.enabled?'синк с таблицей · '+syncTimeStr():'вручную'}${cfg.enabled?' · <button class="link" id="bSyncNow" style="color:var(--accent-ink)">обновить</button>':''}</span></div>
+    <div class="bmonths">
+      ${eff.map(b=>`<div class="bm" data-bm="${b.month}">
+        <span class="bmn">${M_CAP[mIdx(b.month)]} <span class="muted">${mYear(b.month).slice(2)}</span></span>
+        <span class="bmv"><span class="cur" style="color:var(--ink-3)">$</span><input class="inp ni w70" data-f="bval" value="${b.usd??''}" inputmode="decimal"></span>
+        <span class="bmsrc">${b.overridden?`<span style="color:var(--accent-ink)">правка</span> <button class="entry re" data-act="brev" title="вернуть из таблицы">↺</button>`:(cfg.enabled?'<span class="muted">таблица</span>':'')}</span>
+      </div>`).join('')}
+    </div>`:'';
+
   return `<section class="sec">
     <div class="sec-head"><span class="idx">04</span><h2>Крупные цели</h2><span class="sec-note">копятся из бонусов · прогноз по твоей истории</span></div>
     ${body}
@@ -643,10 +725,12 @@ function secGoals(rows,annDelta){
     <div class="pool">
       <div class="g-lab"><span>Бонусный пул</span>${stats?`<span style="font-family:'IBM Plex Mono',monospace;color:var(--ink-3);text-transform:none;letter-spacing:0">сценарии из истории: консерв ≈ медиана, средний ≈ среднее</span>`:''}</div>
       <div class="p-val num ${pool<0?'neg':''}">${fmt(pool)}<span class="rub"> ₽</span></div>
-      <div class="p-note">Плавающие BD-бонусы (начинаются после $3300 продаж/мес) — из них копятся авто и путешествия. Прогноз целей строится по консервативному и среднему сценарию из твоей таблицы.</div>
+      <div class="p-note">Плавающие BD-бонусы (начинаются после $3300 продаж/мес) — из них копятся авто и путешествия. История тянется из твоей Google-таблицы; сценарии прогноза считаются по ней.</div>
       ${statsBox}
-      <div id="bonusList" style="margin-top:14px">${bonusRows()}</div>
-      <div class="addcat" style="margin-top:8px"><button class="btn sm" id="addBonus">+ бонус в пул</button></div>
+      ${monthsBox}
+      <div class="g-lab" style="margin-top:22px"><span>Отложено в пул</span></div>
+      <div id="bonusList" style="margin-top:8px">${bonusRows()}</div>
+      <div class="addcat" style="margin-top:8px"><button class="btn sm" id="addBonus">+ отложить в пул</button></div>
     </div>
     <div class="addcat" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--rule)">
       <input class="inp" id="gName" placeholder="Новая цель" style="max-width:200px">
@@ -692,12 +776,23 @@ function settingsPanel(){
         <div class="set-row"><span class="l">Курс $ для бонусов</span><input class="inp ni w70" id="sRate" value="${s.planRate}"><button class="cbrbtn" id="sRateCbr">ЦБ</button></div>
         <div class="set-row"><span class="l">Консервативный бонус, $/мес</span><input class="inp ni w70" id="sCons" value="${s.bonusCons}"></div>
         <div class="set-row"><span class="l">Средний бонус, $/мес</span><input class="inp ni w70" id="sAvg" value="${s.bonusAvg}"></div>
+        <div class="set-row" style="border:none;padding-top:2px"><span class="l" style="color:var(--ink-3);font-size:11px">консерв ≈ медиана, средний ≈ среднее по истории</span><button class="btn sm" id="sApplyStats">↻ из истории</button></div>
         <div class="set-row"><span class="l">Начало горизонта</span><input type="month" class="inp" id="sStart" value="${s.horizonStart}"></div>
         <div class="set-row"><span class="l">Месяцев в горизонте</span><input class="inp ni w56" id="sHor" value="${s.horizonMonths}"></div>
       </div>
       <div class="set-block">
+        <h3>Синк бонусов из Google-таблицы</h3>
+        <div class="set-row"><span class="l">Синхронизация</span><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="bsEnabled" ${state.bonusSync&&state.bonusSync.enabled?'checked':''}> <span class="l">${state.bonusSync&&state.bonusSync.enabled?'включена':'выключена'}</span></label></div>
+        <div class="set-row"><span class="l">Ссылка на таблицу</span></div>
+        <input class="inp" id="bsUrl" placeholder="https://docs.google.com/spreadsheets/d/…/edit#gid=…" value="${state.bonusSync&&state.bonusSync.sheetId?esc('https://docs.google.com/spreadsheets/d/'+state.bonusSync.sheetId+'/edit#gid='+(state.bonusSync.gid||'0')):''}" style="margin:6px 0">
+        <div class="set-row"><span class="l">Год таблицы</span><input class="inp ni w70" id="bsYear" value="${state.bonusSync?state.bonusSync.yearBase:new Date().getFullYear()}"></div>
+        <div class="set-row"><span class="l">Период опроса, сек</span><input class="inp ni w56" id="bsInt" value="${state.bonusSync?state.bonusSync.intervalSec:60}"></div>
+        <div class="set-actions"><button class="btn solid sm" id="bsSave">Сохранить и синкнуть</button><button class="btn sm" id="bsNow">Обновить сейчас</button></div>
+        <p class="hint">Читается строка «Бонус» из вкладки таблицы (по порядку месяцев). Ссылка хранится только в data.json/браузере — в публичный код не попадает. Правки по месяцу (override) не затираются синком; ↺ возвращает значение из таблицы.</p>
+      </div>
+      <div class="set-block" style="grid-column:1/-1">
         <h3>Шаблон расходов <span class="num" style="font-size:12px;color:var(--ink-3);font-weight:400">${fmt(state.template.expenses.reduce((a,t)=>a+(t.amount||0),0))} ₽</span></h3>
-        ${tExp}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 36px">${tExp}</div>
         <div class="addcat"><button class="btn sm" id="tExpAdd">+ строка</button></div>
         <p class="hint">Шаблон применяется к новым месяцам. Доход планируется одним числом слева.</p>
       </div>
@@ -765,6 +860,19 @@ function bind(rows){
   });
   sheet.querySelector('#addBonus')?.addEventListener('click',()=>{state.bonuses.push({id:uid(),date:detailYM+'-15',usd:null,rate:null,rub:null,note:''});save();render();});
 
+  // per-month bonus override
+  sheet.querySelector('#bSyncNow')?.addEventListener('click',()=>syncBonuses(true));
+  sheet.querySelectorAll('.bm[data-bm]').forEach(el=>{
+    const m=el.dataset.bm;
+    el.querySelector('[data-f=bval]')?.addEventListener('change',e=>{
+      const v=parseNum(e.target.value);
+      const sheetVal=(state.bonusHistory.find(x=>x.month===m)||{}).usd;
+      if(v==null||v===sheetVal)delete state.bonusOverrides[m];else state.bonusOverrides[m]=v;
+      save();render();
+    });
+    el.querySelector('[data-act=brev]')?.addEventListener('click',()=>{delete state.bonusOverrides[m];save();render();});
+  });
+
   // settings
   bindSettings();
 }
@@ -782,6 +890,21 @@ function bindSettings(){
   on('#sRateCbr','click',async e=>{e.target.textContent='…';try{s.planRate=await fetchCbr();save();render();}catch(err){alert('Нет ЦБ');}});
   on('#sCons','change',e=>{const v=parseNum(e.target.value);if(v!=null){s.bonusCons=v;save();render();}});
   on('#sAvg','change',e=>{const v=parseNum(e.target.value);if(v!=null){s.bonusAvg=v;save();render();}});
+  on('#sApplyStats','click',()=>{const st=bonusStats();if(!st){alert('Нет истории бонусов');return;}s.bonusCons=Math.round(st.median);s.bonusAvg=Math.round(st.mean);save();render();});
+  // bonus sync config
+  on('#bsSave','click',()=>{
+    const url=sheet.querySelector('#bsUrl').value.trim();
+    const en=sheet.querySelector('#bsEnabled').checked;
+    const yb=parseNum(sheet.querySelector('#bsYear').value)||new Date().getFullYear();
+    const iv=parseNum(sheet.querySelector('#bsInt').value)||60;
+    const id=sheetIdFromUrl(url)||state.bonusSync.sheetId;
+    const gid=gidFromUrl(url)||state.bonusSync.gid||'0';
+    state.bonusSync={enabled:en,sheetId:id,gid:gid,yearBase:Math.round(yb),intervalSec:Math.round(iv),lastSync:state.bonusSync.lastSync};
+    save();
+    if(en&&id){startSyncLoop();} else {clearInterval(syncTimer);render();}
+  });
+  on('#bsNow','click',()=>syncBonuses(true));
+  on('#bsEnabled','change',e=>{state.bonusSync.enabled=e.target.checked;save();if(e.target.checked)startSyncLoop();else{clearInterval(syncTimer);render();}});
   on('#sStart','change',e=>{if(/^\d{4}-\d{2}$/.test(e.target.value)){s.horizonStart=e.target.value;save();render();}});
   on('#sHor','change',e=>{const v=parseNum(e.target.value);if(v>=1&&v<=36){s.horizonMonths=Math.round(v);save();render();}});
   on('#tExpAdd','click',()=>{state.template.expenses.push({id:uid(),name:'Новая категория',amount:0});save();render();});
@@ -797,12 +920,14 @@ function bindSettings(){
 function updateChips(){
   const c=sheet.querySelector('#cbrChip');if(c)c.innerHTML=`<span class="dot"></span>ЦБ ${cbrNow?'<b>'+cbrNow.toFixed(2)+' ₽</b>':'…'}`;
   const sc=sheet.querySelector('#saveChip');if(sc){sc.className='mchip '+(saveMode==='file'?'ok':saveMode==='saving'?'warn':fileHandle?'ok':'warn');sc.innerHTML=`<span class="dot"></span>${saveMode==='saving'?'сохраняю…':fileHandle?'data.json':'браузер'}`;}
+  updateSyncChip();
 }
 
 /* ===================== init ===================== */
 window.addEventListener('beforeunload',()=>{localStorage.setItem(LS_KEY,JSON.stringify(state));});
 render();
 restoreHandle();
+startSyncLoop();
 fetchCbr().then(r=>{cbrNow=r;updateChips();}).catch(()=>{cbrNow=null;const c=sheet.querySelector('#cbrChip');if(c)c.innerHTML='<span class="dot"></span>ЦБ офлайн';});
 </script>
 </body>
