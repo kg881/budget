@@ -429,9 +429,11 @@ const MN_RU={'Январь':1,'Февраль':2,'Март':3,'Апрель':4,'
 function parseCSV(s){const rows=[];let row=[],cur='',q=false;for(let i=0;i<s.length;i++){const c=s[i];if(q){if(c==='"'){if(s[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}else{if(c==='"')q=true;else if(c===','){row.push(cur);cur='';}else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur='';}else if(c==='\r'){}else cur+=c;}}if(cur!==''||row.length){row.push(cur);rows.push(row);}return rows;}
 function sheetIdFromUrl(u){const m=String(u).match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);return m?m[1]:'';}
 function gidFromUrl(u){const m=String(u).match(/[?#&]gid=(\d+)/);return m?m[1]:'';}
-let syncState='idle'; // idle|sync|ok|err
+let syncState='idle'; // idle|sync|ok|err|blocked
+function syncBlocked(){return location.protocol==='file:';}
 async function syncBonuses(manual){
   const cfg=state.bonusSync;if(!cfg||!cfg.enabled||!cfg.sheetId)return;
+  if(syncBlocked()){syncState='blocked';updateSyncChip();if(manual)alert('Синк с таблицей не работает при открытии локального файла (ограничение браузера). Открой облачную версию: kg881.github.io/budget');return null;}
   syncState='sync';updateSyncChip();
   try{
     const url=`https://docs.google.com/spreadsheets/d/${cfg.sheetId}/export?format=csv&gid=${cfg.gid||0}`;
@@ -468,7 +470,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&state.bon
 function updateSyncChip(){
   const el=sheet.querySelector('#syncChip');if(!el)return;
   const cfg=state.bonusSync;
-  const map={idle:['',''],sync:['warn','синк…'],ok:['ok','таблица '+syncTimeStr()],err:['warn','ошибка синка']};
+  const map={idle:['',''],sync:['warn','синк…'],ok:['ok','таблица '+syncTimeStr()],err:['warn','ошибка синка'],blocked:['warn','синк в облаке']};
   const st=cfg&&cfg.enabled?(map[syncState]||map.idle):null;
   el.style.display=st?'inline-flex':'none';
   if(st){el.className='mchip '+st[0];el.innerHTML='<span class="dot"></span>'+st[1];}
@@ -709,7 +711,7 @@ function secGoals(rows,annDelta){
   const eff=effBonus();
   const cfg=state.bonusSync||{};
   const monthsBox=eff.length?`
-    <div class="block-label" style="margin-top:18px">Бонусы по месяцам <span class="r">${cfg.enabled?'синк с таблицей · '+syncTimeStr():'вручную'}${cfg.enabled?' · <button class="link" id="bSyncNow" style="color:var(--accent-ink)">обновить</button>':''}</span></div>
+    <div class="block-label" style="margin-top:18px">Бонусы по месяцам <span class="r">${cfg.enabled?(syncBlocked()?'синк только в облаке (kg881.github.io/budget)':'синк с таблицей · '+syncTimeStr()+' · <button class="link" id="bSyncNow" style="color:var(--accent-ink)">обновить</button>'):'вручную'}</span></div>
     <div class="bmonths">
       ${eff.map(b=>`<div class="bm" data-bm="${b.month}">
         <span class="bmn">${M_CAP[mIdx(b.month)]} <span class="muted">${mYear(b.month).slice(2)}</span></span>
