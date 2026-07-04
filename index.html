@@ -135,51 +135,22 @@ const MONTH_DAT=['январю','февралю','марту','апрелю','м
 function ymDat(ym){const[y,m]=ym.split('-').map(Number);return MONTH_DAT[m-1]+' '+y;}
 const uid=()=> 'x'+Math.random().toString(36).slice(2,9);
 
-function defaultState(){return {
+function defaultState(){const ym=todayYM();return {
   version:1,
-  settings:{planRate:78, horizonStart:'2026-07', horizonMonths:12, bonusCons:300, bonusAvg:1000},
+  settings:{planRate:78, horizonStart:ym, horizonMonths:12, bonusCons:300, bonusAvg:1000},
   template:{
     incomes:[
-      {id:'i1',name:'ЗП 5-го — рублёвая часть',day:5,cur:'RUB',amount:60000},
-      {id:'i2',name:'ЗП 5-го — крипта',day:5,cur:'USD',amount:2000},
-      {id:'i3',name:'ЗП 20-го',day:20,cur:'RUB',amount:40000},
+      {id:'i1',name:'ЗП, часть 1',day:5,cur:'RUB',amount:0},
+      {id:'i2',name:'ЗП, часть 2 ($)',day:5,cur:'USD',amount:0},
     ],
     expenses:[
-      {id:'e1',name:'Ипотека',amount:27300},
-      {id:'e2',name:'Ozon',amount:5000},
-      {id:'e3',name:'Зал',amount:3000},
-      {id:'e4',name:'Питание (дом + вне дома)',amount:70000},
-      {id:'e5',name:'Медицина',amount:30000},
-      {id:'e6',name:'Телефон, VPN, Wi-Fi',amount:3350},
-      {id:'e7',name:'Красота',amount:10000},
-      {id:'e8',name:'Авто',amount:10000},
-      {id:'e9',name:'Теннис',amount:7000},
-      {id:'e10',name:'Нижний',amount:10000},
-      {id:'e11',name:'Помощь отцу',amount:10000},
+      {id:'e1',name:'Жильё',amount:0},
+      {id:'e2',name:'Питание',amount:0},
+      {id:'e3',name:'Транспорт',amount:0},
+      {id:'e4',name:'Прочее',amount:0},
     ]
   },
-  months:{
-    '2026-07':{
-      incomes:[
-        {id:uid(),tplId:'i1',name:'ЗП 5-го — рублёвая часть',day:5,cur:'RUB',plan:60000,fact:34000,rate:null},
-        {id:uid(),tplId:'i2',name:'ЗП 5-го — крипта',day:5,cur:'USD',plan:2000,fact:2130,rate:78.31},
-        {id:uid(),tplId:'i3',name:'ЗП 20-го',day:20,cur:'RUB',plan:40000,fact:null,rate:null},
-      ],
-      expenses:[
-        {id:uid(),tplId:'e1',name:'Ипотека',plan:27300,fact:null},
-        {id:uid(),tplId:'e2',name:'Ozon',plan:5000,fact:null},
-        {id:uid(),tplId:'e3',name:'Зал',plan:3000,fact:null},
-        {id:uid(),tplId:'e4',name:'Питание (дом + вне дома)',plan:70000,fact:null},
-        {id:uid(),tplId:'e5',name:'Медицина',plan:30000,fact:null},
-        {id:uid(),tplId:'e6',name:'Телефон, VPN, Wi-Fi',plan:3350,fact:null},
-        {id:uid(),tplId:'e7',name:'Красота',plan:10000,fact:null},
-        {id:uid(),tplId:'e8',name:'Авто',plan:10000,fact:null},
-        {id:uid(),tplId:'e9',name:'Теннис',plan:7000,fact:null},
-        {id:uid(),tplId:'e10',name:'Нижний',plan:10000,fact:null},
-        {id:uid(),tplId:'e11',name:'Помощь отцу',plan:10000,fact:null},
-      ]
-    }
-  },
+  months:{},
   bonuses:[],
   goals:[]
 };}
