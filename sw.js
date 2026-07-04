@@ -1,7 +1,7 @@
 /* Бюджет — минимальный service worker.
    index.html: network-first (обновления приходят сразу, офлайн — из кэша).
    Иконки/манифест/шрифты Google: cache-first (не меняются). */
-const CACHE = 'budget-v1';
+const CACHE = 'budget-v2';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -20,10 +20,11 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const u = new URL(e.request.url);
 
-  // приложение: сеть → кэш (fallback офлайн)
+  // приложение: сеть с ревалидацией (cache:'no-cache' обходит 10-минутный HTTP-кэш
+  // GitHub Pages — обновления видны сразу) → кэш как fallback офлайн
   if (e.request.mode === 'navigate' || u.pathname.endsWith('/index.html')) {
     e.respondWith(
-      fetch(e.request)
+      fetch(e.request, { cache: 'no-cache' })
         .then(r => { const cp = r.clone(); caches.open(CACHE).then(c => c.put('./', cp)); return r; })
         .catch(() => caches.match('./'))
     );
