@@ -235,7 +235,7 @@
 
 <script>
 /* ===================== state ===================== */
-const LS_KEY='budget-omp-v2';
+const LS_KEY='budget-omp-v3';
 const M_NOM=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
 const M_ROD=['Января','Февраля','Марта','Апреля','Мая','Июня','Июля','Августа','Сентября','Октября','Ноября','Декабря'];
 const M_CAP=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
@@ -244,13 +244,9 @@ const M_DAT=['январю','февралю','марту','апрелю','маю
 const uid=()=>'x'+Math.random().toString(36).slice(2,9);
 
 function defaultState(){const ym=todayYM();return{
-  version:2,
-  settings:{planRate:78,horizonStart:ym,horizonMonths:12,bonusCons:300,bonusAvg:1000},
+  version:3,
+  settings:{planRate:78,incomePlan:0,horizonStart:ym,horizonMonths:12,bonusCons:300,bonusAvg:1000},
   template:{
-    incomes:[
-      {id:'i1',name:'ЗП, часть 1',day:5,cur:'RUB',amount:0},
-      {id:'i2',name:'ЗП, часть 2 ($)',day:5,cur:'USD',amount:0},
-    ],
     expenses:[
       {id:'e1',name:'Жильё',amount:0},
       {id:'e2',name:'Питание',amount:0},
@@ -258,7 +254,7 @@ function defaultState(){const ym=todayYM();return{
       {id:'e4',name:'Прочее',amount:0},
     ]
   },
-  months:{}, bonuses:[], goals:[]
+  months:{}, bonuses:[], goals:[], bonusHistory:[]
 };}
 
 let state=loadLocal()||defaultState();
@@ -287,26 +283,43 @@ function migrate(){
     });
     state.version=2;
   }
+  if(state.version<3){
+    const s=state.settings;const rate=s.planRate||78;
+    if(state.template&&state.template.incomes){
+      s.incomePlan=state.template.incomes.reduce((a,t)=>a+(t.cur==='USD'?(t.amount||0)*rate:(t.amount||0)),0);
+      delete state.template.incomes;
+    }
+    if(s.incomePlan==null)s.incomePlan=0;
+    Object.values(state.months||{}).forEach(m=>{
+      if(m.incomes){
+        const f=m.incomes.map(r=>r.fact==null?null:(r.cur==='USD'?r.fact*(r.rate||rate):r.fact)).filter(v=>v!=null);
+        m.incomeFact=f.length?Math.round(f.reduce((a,b)=>a+b,0)):null;
+        delete m.incomes;
+      }
+      if(m.incomeFact===undefined)m.incomeFact=null;
+    });
+    state.version=3;
+  }
+  if(!state.bonusHistory)state.bonusHistory=[];
 }
 
 /* ===================== model helpers ===================== */
 function monthTpl(){return{
-  incomes:state.template.incomes.map(t=>({id:uid(),tplId:t.id,name:t.name,day:t.day,cur:t.cur,plan:t.amount,fact:null,rate:null})),
+  incomeFact:null,
   expenses:state.template.expenses.map(t=>({id:uid(),tplId:t.id,name:t.name,plan:t.amount,fact:null,closed:false,closedDate:null})),
 };}
 function getMonth(ym){return state.months[ym]||monthTpl();}
 function matM(ym){if(!state.months[ym])state.months[ym]=monthTpl();return state.months[ym];}
 function horizon(){const s=state.settings;return Array.from({length:s.horizonMonths},(_,i)=>ymAdd(s.horizonStart,i));}
 
-function incPlanRub(r){return r.cur==='USD'?(r.plan||0)*state.settings.planRate:(r.plan||0);}
-function incFactRub(r){if(r.fact==null)return null;return r.cur==='USD'?r.fact*(r.rate||state.settings.planRate):r.fact;}
+function incPlan(ym){return state.settings.incomePlan||0;}
+function incFact(ym){const v=getMonth(ym).incomeFact;return v==null?null:v;}
 function bonusRub(b){return b.rub!=null?b.rub:(b.usd!=null?b.usd*(b.rate||state.settings.planRate):0);}
 
 function totals(ym){
   const m=getMonth(ym);
-  const ip=m.incomes.reduce((s,r)=>s+incPlanRub(r),0);
-  const ifacts=m.incomes.map(incFactRub).filter(v=>v!=null);
-  const if_=ifacts.length?ifacts.reduce((a,b)=>a+b,0):null;
+  const ip=incPlan(ym);
+  const if_=incFact(ym);
   const ep=m.expenses.reduce((s,r)=>s+(r.plan||0),0);
   const closed=m.expenses.filter(e=>e.closed);
   const anyClosed=closed.length>0;
@@ -321,6 +334,16 @@ function annualPlanDelta(){return horizon().reduce((s,ym)=>s+totals(ym).dPlan,0)
 function annualFactDelta(){let sum=0,mo=0;horizon().forEach(ym=>{const t=totals(ym);if(t.dFact!=null){sum+=t.dFact;mo++;}});return{sum,mo};}
 function endCumulative(){let c=0;horizon().forEach(ym=>c+=totals(ym).dPlan);return c;}
 function poolBalance(){const inn=state.bonuses.reduce((s,b)=>s+bonusRub(b),0);const out=state.goals.filter(g=>g.done).reduce((s,g)=>s+(g.spent||0),0);return inn-out;}
+function bonusStats(){
+  const h=(state.bonusHistory||[]).filter(x=>x.usd!=null&&x.usd>0);
+  if(!h.length)return null;
+  const vals=h.map(x=>x.usd).slice().sort((a,b)=>a-b);
+  const sum=vals.reduce((a,b)=>a+b,0),mean=sum/vals.length;
+  const median=vals.length%2?vals[(vals.length-1)/2]:(vals[vals.length/2-1]+vals[vals.length/2])/2;
+  const max=vals[vals.length-1];
+  const maxRow=h.find(x=>x.usd===max);
+  return{n:vals.length,sum,mean,median,max,maxMonth:maxRow?maxRow.month:null};
+}
 
 /* ===================== persistence ===================== */
 function loadLocal(){try{const s=JSON.parse(localStorage.getItem(LS_KEY));return s&&s.version?s:null;}catch(e){return null;}}
@@ -427,7 +450,7 @@ function masthead(annDelta,endCum,cur,curT,annFact){
     <div class="mast-left">
       <div class="kicker">Планер бюджета · горизонт ${state.settings.horizonMonths} мес</div>
       <h1 class="wordmark">Бюджет<span class="dot">.</span></h1>
-      <div class="dateline">${ymFull(state.settings.horizonStart)}<span class="bar">—</span>${ymFull(ymAdd(state.settings.horizonStart,state.settings.horizonMonths-1))}<span class="bar">/</span>${state.settings.horizonMonths} периодов</div>
+      <div class="dateline">${ymFull(state.settings.horizonStart)}<span class="bar">—</span>${ymFull(ymAdd(state.settings.horizonStart,state.settings.horizonMonths-1))}<span class="bar">·</span>${state.settings.horizonMonths} ${plural(state.settings.horizonMonths,'месяц','месяца','месяцев')}</div>
     </div>
     <div class="mast-right">
       <div class="fig"><div class="fig-label">Годовая дельта · план</div><div class="fig-value num ${annDelta>=0?'pos':'neg'}">${fmtS(annDelta)}<span class="rub">₽</span></div></div>
@@ -500,17 +523,6 @@ function secDelta(rows,cur){
 function secMonth(){
   const ym=detailYM,m=getMonth(ym),t=totals(ym),mat=!!state.months[ym];
   const H=horizon();
-  const incRows=m.incomes.map(r=>`
-    <div class="inc" data-iid="${r.id}">
-      <span class="nm"><input class="inp" data-f="name" value="${esc(r.name)}"></span>
-      <span class="cur">${r.cur==='USD'?'$':'₽'}</span>
-      <span><input class="inp ni w70" data-f="plan" value="${r.plan??''}" placeholder="план"></span>
-      <span style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
-        <input class="inp ni w70" data-f="fact" value="${r.fact??''}" placeholder="факт">
-        ${r.cur==='USD'?`<input class="inp ni w56" data-f="rate" value="${r.rate??''}" placeholder="курс"><button class="cbrbtn" data-act="cbr">ЦБ</button>`:''}
-        <button class="entry re" data-act="idel" title="удалить">✕</button>
-      </span>
-    </div>`).join('');
 
   const catRows=m.expenses.map(e=>{
     const w=t.ep>0?Math.min(100,(e.plan||0)/t.ep*100):0;
@@ -539,10 +551,13 @@ function secMonth(){
     </div>
 
     <div style="margin-bottom:26px">
-      <div class="block-label">Доходы месяца <span class="r">${fmt(t.if_)} ₽ факт · план ${fmt(t.ip)} ₽</span></div>
-      ${incRows}
-      <div class="inc-foot"><span>Итого доход</span><span class="num">${fmt(t.if_!=null?t.if_:t.ip)} ₽ ${t.if_!=null?'· факт':'· план'}</span></div>
-      <div class="addcat" style="margin-top:8px"><button class="btn sm" id="addIncR">+ доход ₽</button><button class="btn sm" id="addIncU">+ доход $</button></div>
+      <div class="block-label">Доход месяца <span class="r">план ${fmt(t.ip)} ₽</span></div>
+      <div class="inc" style="grid-template-columns:1fr auto">
+        <span class="nm">Фактически пришло за ${M_ROD[mIdx(ym)].toLowerCase()}</span>
+        <span style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><input class="inp ni w120" id="incFact" value="${incFact(ym)??''}" placeholder="факт ₽" inputmode="numeric"><span class="cur" style="width:auto">₽</span></span>
+      </div>
+      <div class="inc-foot"><span>Итого доход</span><span class="num">${fmt(t.if_!=null?t.if_:t.ip)} ₽ · ${t.if_!=null?'факт':'план'}</span></div>
+      <p class="hint" style="margin-top:8px">5-го числа впиши, сколько реально пришло (рубли + крипта в рублях). План 256 000 ₽/мес меняется в «Настройках».</p>
     </div>
 
     <div class="month-grid">
@@ -572,30 +587,40 @@ function plural(n,a,b,c){const m=Math.abs(n)%100,d=m%10;if(m>10&&m<20)return c;i
 
 function secGoals(rows,annDelta){
   const pool=poolBalance();const s=state.settings;
+  const rate=s.planRate||78;
+  const consRub=(s.bonusCons||0)*rate, avgRub=(s.bonusAvg||0)*rate;
+  const stats=bonusStats();
   const active=state.goals.filter(g=>!g.done);
   const done=state.goals.filter(g=>g.done);
-  const forecastTotal=pool+annDelta;
   const body=active.length?active.map(g=>{
     const mLeft=Math.max(0,ymDiff(todayYM(),g.targetMonth||todayYM()));
+    const projCons=pool+mLeft*consRub;
+    const projAvg=pool+mLeft*avgRub;
     const pct=Math.min(100,pool/g.amount*100);
-    const need=(g.amount-pool);
-    const tempo=mLeft>0?need/mLeft:need;
-    const fcPct=Math.min(100,forecastTotal/g.amount*100);
-    const gap=g.amount-forecastTotal;
+    const pctCons=Math.min(100,projCons/g.amount*100);
+    const pctAvg=Math.min(100,projAvg/g.amount*100);
+    const gapAvg=g.amount-projAvg, gapCons=g.amount-projCons;
+    const need=g.amount-pool;
+    const tempoNeed=mLeft>0?need/mLeft:need;
+    let badge;
+    if(pool>=g.amount)badge='<span class="cur" style="color:var(--pos)">пул уже покрывает</span>';
+    else if(projCons>=g.amount)badge='<span class="cur" style="color:var(--pos)">успеваешь даже консервативно</span>';
+    else if(projAvg>=g.amount)badge='<span class="cur">хватит при среднем бонусе</span>';
+    else badge='<span class="cur" style="color:var(--neg)">не хватает даже при среднем</span>';
     return `<div class="goal" data-gid="${g.id}">
       <div class="goal-left">
         <div class="g-lab"><span>Цель «${esc(g.name)}»</span><button class="btn sm" data-act="gedit">изм.</button></div>
         <div class="goal-target num">${fmt(g.amount)}<span class="rub"> ₽</span></div>
-        <div class="goal-sub">собрано <b>${fmt(pool)} ₽</b> · <b>${pct.toFixed(1)}%</b><br>осталось <b>${fmt(Math.max(0,need))} ₽</b><br>нужен темп <b>${fmt(tempo)} ₽/мес</b> · срок ${g.targetMonth?ymDat(g.targetMonth):'—'}</div>
+        <div class="goal-sub">собрано <b>${fmt(pool)} ₽</b> · <b>${pct.toFixed(1)}%</b><br>осталось <b>${fmt(Math.max(0,need))} ₽</b><br>нужен бонус <b>${fmt(tempoNeed)} ₽/мес</b> ≈ <b>$${fmt(tempoNeed/rate)}</b><br>срок ${g.targetMonth?ymDat(g.targetMonth):'—'} · ${mLeft} мес</div>
       </div>
       <div class="goal-right">
-        <div class="prog-meta"><span class="cur">факт ${pct.toFixed(1)}%</span><span>прогноз ${fcPct.toFixed(0)}%</span><span>цель 100%</span></div>
-        <div class="track-big"><div class="forecast" style="width:${fcPct.toFixed(1)}%"></div><div class="fill" style="width:${pct.toFixed(1)}%"></div></div>
+        <div class="prog-meta"><span class="cur">факт ${pct.toFixed(1)}%</span>${badge}<span>цель 100%</span></div>
+        <div class="track-big"><div class="forecast" style="width:${pctAvg.toFixed(1)}%"></div><div class="fill" style="width:${pct.toFixed(1)}%"></div></div>
         <div class="ticks"><div class="tk">0</div><div class="tk">25%</div><div class="tk">50%</div><div class="tk">75%</div></div>
         <div class="forecast-box">
-          <div class="fc"><div class="k">Прогноз · пул + дельта</div><div class="v num">${fmt(forecastTotal)}</div><div class="s">${fmt(pool)} пул + ${fmt(annDelta)} годовая дельта</div></div>
-          <div class="fc"><div class="k">Разрыв до цели</div><div class="v num ${gap>0?'neg':'pos'}">${gap>0?'−'+fmt(gap):'+'+fmt(-gap)}</div><div class="s">${gap>0?'закрывается доп. бонусами':'цель перекрыта'}</div></div>
-          <div class="fc"><div class="k">Готовность к сроку</div><div class="v num">${fcPct.toFixed(0)}%</div><div class="s">при плановой дельте</div></div>
+          <div class="fc"><div class="k">Прогноз · консерв ($${fmt(s.bonusCons)}/мес)</div><div class="v num ${projCons>=g.amount?'pos':''}">${fmt(projCons)}</div><div class="s">${gapCons>0?'−'+fmt(gapCons)+' до цели':'цель закрыта'}</div></div>
+          <div class="fc"><div class="k">Прогноз · средний ($${fmt(s.bonusAvg)}/мес)</div><div class="v num ${projAvg>=g.amount?'pos':''}">${fmt(projAvg)}</div><div class="s">${gapAvg>0?'−'+fmt(gapAvg)+' до цели':'+'+fmt(-gapAvg)+' сверх'}</div></div>
+          <div class="fc"><div class="k">Готовность к сроку</div><div class="v num">${pctAvg.toFixed(0)}%</div><div class="s">по среднему бонусу</div></div>
         </div>
         <div style="margin-top:14px;display:flex;gap:8px"><button class="btn sm" data-act="gbuy">куплено</button><button class="btn sm" data-act="gdel">удалить</button></div>
       </div>
@@ -604,16 +629,24 @@ function secGoals(rows,annDelta){
 
   const doneRows=done.map(g=>`<div class="goal-done" data-gid="${g.id}"><span>${esc(g.name)} · куплено</span><span class="a">${fmt(g.spent)} ₽ <button class="entry re" data-act="gdel">✕</button></span></div>`).join('');
 
+  const statsBox=stats?`
+    <div class="forecast-box" style="margin-top:14px">
+      <div class="fc"><div class="k">Бонусы факт · ${stats.n} мес</div><div class="v num">$${fmt(stats.sum)}</div><div class="s">всего за период ≈ ${fmt(stats.sum*rate)} ₽</div></div>
+      <div class="fc"><div class="k">Среднее / мес</div><div class="v num">$${fmt(stats.mean)}</div><div class="s">≈ ${fmt(stats.mean*rate)} ₽/мес</div></div>
+      <div class="fc"><div class="k">Медиана · макс</div><div class="v num">$${fmt(stats.median)}</div><div class="s">макс $${fmt(stats.max)}${stats.maxMonth?' ('+M_SH[mIdx(stats.maxMonth)]+' '+mYear(stats.maxMonth).slice(2)+')':''}</div></div>
+    </div>`:'';
+
   return `<section class="sec">
-    <div class="sec-head"><span class="idx">04</span><h2>Крупные цели</h2><span class="sec-note">финансируются из бонусного пула</span></div>
+    <div class="sec-head"><span class="idx">04</span><h2>Крупные цели</h2><span class="sec-note">копятся из бонусов · прогноз по твоей истории</span></div>
     ${body}
     ${done.length?`<div style="margin-top:16px">${doneRows}</div>`:''}
     <div class="pool">
-      <div class="g-lab"><span>Бонусный пул</span></div>
+      <div class="g-lab"><span>Бонусный пул</span>${stats?`<span style="font-family:'IBM Plex Mono',monospace;color:var(--ink-3);text-transform:none;letter-spacing:0">сценарии из истории: консерв ≈ медиана, средний ≈ среднее</span>`:''}</div>
       <div class="p-val num ${pool<0?'neg':''}">${fmt(pool)}<span class="rub"> ₽</span></div>
-      <div class="p-note">Копится из плавающих бонусов $${s.bonusCons}–${s.bonusAvg}/мес сверх дохода, отдельно от месячной дельты. Добавляй бонусы ниже.</div>
-      <div id="bonusList" style="margin-top:12px">${bonusRows()}</div>
-      <div class="addcat" style="margin-top:8px"><button class="btn sm" id="addBonus">+ бонус</button></div>
+      <div class="p-note">Плавающие BD-бонусы (начинаются после $3300 продаж/мес) — из них копятся авто и путешествия. Прогноз целей строится по консервативному и среднему сценарию из твоей таблицы.</div>
+      ${statsBox}
+      <div id="bonusList" style="margin-top:14px">${bonusRows()}</div>
+      <div class="addcat" style="margin-top:8px"><button class="btn sm" id="addBonus">+ бонус в пул</button></div>
     </div>
     <div class="addcat" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--rule)">
       <input class="inp" id="gName" placeholder="Новая цель" style="max-width:200px">
@@ -638,13 +671,6 @@ function bonusRows(){
 
 function settingsPanel(){
   const s=state.settings;
-  const tInc=state.template.incomes.map(t=>`
-    <div class="tpl" data-tid="${t.id}">
-      <input class="inp" data-f="name" value="${esc(t.name)}">
-      <select class="inp" data-f="cur"><option value="RUB" ${t.cur==='RUB'?'selected':''}>₽</option><option value="USD" ${t.cur==='USD'?'selected':''}>$</option></select>
-      <input class="inp ni w56" data-f="amount" value="${t.amount??''}">
-      <button class="entry re" data-act="tdel">✕</button>
-    </div>`).join('');
   const tExp=state.template.expenses.map(t=>`
     <div class="tpl exp" data-tid="${t.id}">
       <input class="inp" data-f="name" value="${esc(t.name)}">
@@ -662,19 +688,18 @@ function settingsPanel(){
     <div class="set-grid">
       <div class="set-block">
         <h3>Параметры</h3>
-        <div class="set-row"><span class="l">Плановый курс $</span><input class="inp ni w70" id="sRate" value="${s.planRate}"><button class="cbrbtn" id="sRateCbr">ЦБ</button></div>
+        <div class="set-row"><span class="l">Плановый доход, ₽/мес</span><input class="inp ni w90" id="sIncPlan" value="${s.incomePlan}"></div>
+        <div class="set-row"><span class="l">Курс $ для бонусов</span><input class="inp ni w70" id="sRate" value="${s.planRate}"><button class="cbrbtn" id="sRateCbr">ЦБ</button></div>
         <div class="set-row"><span class="l">Консервативный бонус, $/мес</span><input class="inp ni w70" id="sCons" value="${s.bonusCons}"></div>
         <div class="set-row"><span class="l">Средний бонус, $/мес</span><input class="inp ni w70" id="sAvg" value="${s.bonusAvg}"></div>
         <div class="set-row"><span class="l">Начало горизонта</span><input type="month" class="inp" id="sStart" value="${s.horizonStart}"></div>
         <div class="set-row"><span class="l">Месяцев в горизонте</span><input class="inp ni w56" id="sHor" value="${s.horizonMonths}"></div>
       </div>
       <div class="set-block">
-        <h3>Шаблон доходов</h3>
-        ${tInc}
-        <div class="addcat"><button class="btn sm" id="tIncAdd">+ строка</button></div>
-        <h3 style="margin-top:22px">Шаблон расходов <span class="num" style="font-size:12px;color:var(--ink-3);font-weight:400">${fmt(state.template.expenses.reduce((a,t)=>a+(t.amount||0),0))} ₽</span></h3>
+        <h3>Шаблон расходов <span class="num" style="font-size:12px;color:var(--ink-3);font-weight:400">${fmt(state.template.expenses.reduce((a,t)=>a+(t.amount||0),0))} ₽</span></h3>
         ${tExp}
         <div class="addcat"><button class="btn sm" id="tExpAdd">+ строка</button></div>
+        <p class="hint">Шаблон применяется к новым месяцам. Доход планируется одним числом слева.</p>
       </div>
     </div>
     <p class="hint">Шаблон применяется к месяцам, где ты ещё не вносил факты. Заполненные месяцы не трогаются — можно «сброс к шаблону» внутри месяца. data.json лежит рядом с приложением в папке «ОМП/Финансы».</p>
@@ -700,16 +725,8 @@ function bind(rows){
   sheet.querySelector('#nM')?.addEventListener('click',e=>{e.stopPropagation();const i=H.indexOf(detailYM);if(i<H.length-1){detailYM=H[i+1];render();}});
   sheet.querySelector('.resetm')?.addEventListener('click',()=>{if(confirm('Сбросить месяц к шаблону? Введённые факты и закрытия удалятся.')){delete state.months[detailYM];save();render();}});
 
-  // incomes
-  sheet.querySelectorAll('.inc[data-iid]').forEach(el=>{
-    el.addEventListener('change',e=>{const r=matM(detailYM).incomes.find(x=>x.id===el.dataset.iid);if(!r)return;const f=e.target.dataset.f;if(f==='name')r.name=e.target.value;else r[f]=parseNum(e.target.value);save();render();});
-    el.addEventListener('click',async e=>{const btn=e.target.closest('button');if(!btn)return;const r=matM(detailYM).incomes.find(x=>x.id===el.dataset.iid);if(!r)return;
-      if(btn.dataset.act==='idel'){if(confirm('Удалить строку дохода?')){const mm=matM(detailYM);mm.incomes=mm.incomes.filter(x=>x.id!==r.id);save();render();}}
-      if(btn.dataset.act==='cbr'){btn.textContent='…';try{r.rate=await fetchCbr(detailYM+'-'+String(r.day||5).padStart(2,'0'));save();render();}catch(err){btn.textContent='ЦБ';alert('Нет курса ЦБ (сеть?)');}}
-    });
-  });
-  sheet.querySelector('#addIncR')?.addEventListener('click',()=>{matM(detailYM).incomes.push({id:uid(),name:'Новый доход',cur:'RUB',plan:0,fact:null,rate:null});save();render();});
-  sheet.querySelector('#addIncU')?.addEventListener('click',()=>{matM(detailYM).incomes.push({id:uid(),name:'Новый доход $',cur:'USD',plan:0,fact:null,rate:null});save();render();});
+  // income fact (single field)
+  sheet.querySelector('#incFact')?.addEventListener('change',e=>{matM(detailYM).incomeFact=parseNum(e.target.value);save();render();});
 
   // categories
   sheet.querySelectorAll('.cat[data-eid]').forEach(el=>{
@@ -760,17 +777,17 @@ function bindSettings(){
   on('#fOff','click',disconnectFile);
   on('#fExp','click',exportJSON);
   on('#fImp','click',importJSON);
+  on('#sIncPlan','change',e=>{const v=parseNum(e.target.value);if(v!=null){s.incomePlan=v;save();render();}});
   on('#sRate','change',e=>{const v=parseNum(e.target.value);if(v){s.planRate=v;save();render();}});
   on('#sRateCbr','click',async e=>{e.target.textContent='…';try{s.planRate=await fetchCbr();save();render();}catch(err){alert('Нет ЦБ');}});
   on('#sCons','change',e=>{const v=parseNum(e.target.value);if(v!=null){s.bonusCons=v;save();render();}});
   on('#sAvg','change',e=>{const v=parseNum(e.target.value);if(v!=null){s.bonusAvg=v;save();render();}});
   on('#sStart','change',e=>{if(/^\d{4}-\d{2}$/.test(e.target.value)){s.horizonStart=e.target.value;save();render();}});
   on('#sHor','change',e=>{const v=parseNum(e.target.value);if(v>=1&&v<=36){s.horizonMonths=Math.round(v);save();render();}});
-  on('#tIncAdd','click',()=>{state.template.incomes.push({id:uid(),name:'Новый доход',day:5,cur:'RUB',amount:0});save();render();});
   on('#tExpAdd','click',()=>{state.template.expenses.push({id:uid(),name:'Новая категория',amount:0});save();render();});
   sheet.querySelectorAll('.tpl[data-tid]').forEach(el=>{
-    el.addEventListener('change',e=>{const list=el.classList.contains('exp')?state.template.expenses:state.template.incomes;const t=list.find(x=>x.id===el.dataset.tid);if(!t)return;const f=e.target.dataset.f;if(f==='name'||f==='cur')t[f]=e.target.value;else t[f]=parseNum(e.target.value);save();render();});
-    el.querySelector('[data-act=tdel]')?.addEventListener('click',()=>{const exp=el.classList.contains('exp');const list=exp?state.template.expenses:state.template.incomes;if(confirm('Удалить из шаблона?')){const i=list.findIndex(x=>x.id===el.dataset.tid);if(i>=0)list.splice(i,1);save();render();}});
+    el.addEventListener('change',e=>{const t=state.template.expenses.find(x=>x.id===el.dataset.tid);if(!t)return;const f=e.target.dataset.f;if(f==='name')t[f]=e.target.value;else t[f]=parseNum(e.target.value);save();render();});
+    el.querySelector('[data-act=tdel]')?.addEventListener('click',()=>{if(confirm('Удалить из шаблона?')){const i=state.template.expenses.findIndex(x=>x.id===el.dataset.tid);if(i>=0)state.template.expenses.splice(i,1);save();render();}});
   });
   // keep settings open across re-render
   const det=sheet.querySelector('#settings');if(det&&window.__setOpen)det.open=true;
