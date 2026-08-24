@@ -63,9 +63,21 @@ const norm = s => String(s || '').trim().toLowerCase();
 const J = v => JSON.stringify(v === undefined ? null : v);
 
 /* ---------- конфиг Firebase (публичный, безопасно хранить в браузере) ----- */
+/* Конфиг проекта вшит в код: apiKey у Firebase — не секрет, это идентификатор
+   проекта. Доступ к данным закрывают правила Firestore на сервере. Благодаря
+   этому ни владельцу, ни приглашённым не нужно ничего настраивать. */
+const DEFAULT_CFG = {
+  "apiKey": "AIzaSyBwJN79SJagmQEcnS6oAyKUuzxbAvp04ho",
+  "authDomain": "budget-kg-ec93af.firebaseapp.com",
+  "projectId": "budget-kg-ec93af",
+  "appId": "1:249397233596:web:ff5e446750b23c76cd0db9",
+  "messagingSenderId": "249397233596",
+  "storageBucket": "budget-kg-ec93af.firebasestorage.app"
+};
 function loadCfg() {
-  try { const c = JSON.parse(localStorage.getItem(K_CFG)); return c && c.apiKey && c.projectId ? c : null; }
-  catch (e) { return null; }
+  try { const c = JSON.parse(localStorage.getItem(K_CFG)); if (c && c.apiKey && c.projectId) return c; }
+  catch (e) {}
+  return (DEFAULT_CFG && DEFAULT_CFG.apiKey) ? DEFAULT_CFG : null;
 }
 function saveCfg(c) { localStorage.setItem(K_CFG, JSON.stringify(c)); }
 
