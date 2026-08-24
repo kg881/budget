@@ -59,7 +59,9 @@ let status = 'off';            // off | setup | signedout | linking | syncing | 
 let statusText = '';
 let pushTimer = null;
 
-const norm = s => String(s || '').trim().toLowerCase();
+/* нормализация почты: убираем пробелы, регистр и приставку mailto: —
+   почтовые клиенты часто копируют адрес именно как mailto:адрес */
+const norm = s => String(s || '').trim().toLowerCase().replace(/^mailto:/, '').trim();
 const J = v => JSON.stringify(v === undefined ? null : v);
 
 /* ---------- конфиг Firebase (публичный, безопасно хранить в браузере) ----- */
