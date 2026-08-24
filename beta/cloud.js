@@ -326,14 +326,26 @@ async function sendLink(mail) {
 async function completeLinkSignIn() {
   if (!isSignInWithEmailLink(auth, location.href)) return false;
   let mail = localStorage.getItem(K_MAIL);
-  if (!mail) mail = norm(prompt('Подтверди почту, на которую пришла ссылка:') || '');
-  if (!mail) return false;
-  try {
-    await signInWithEmailLink(auth, mail, location.href);
-    localStorage.removeItem(K_MAIL);
-    history.replaceState({}, '', location.pathname);
-    return true;
-  } catch (e) { alert('Ссылка не подошла: ' + e.message); return false; }
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (!mail) mail = norm(prompt(attempt === 0
+      ? 'Введи почту, на которую пришло ЭТО письмо:'
+      : 'Не совпало. Введи точно ту почту, в чей ящик пришло письмо с этой ссылкой (без опечаток):') || '');
+    if (!mail) return false;
+    try {
+      await signInWithEmailLink(auth, mail, location.href);
+      localStorage.removeItem(K_MAIL);
+      history.replaceState({}, '', location.pathname);
+      return true;
+    } catch (e) {
+      const code = e && e.code || '';
+      if (code === 'auth/invalid-email') { mail = null; continue; }  // опечатка/не та почта — спросить ещё раз
+      alert('Ссылка не подошла: ' + e.message +
+        (code === 'auth/invalid-action-code' ? '\n\nСкорее всего, ссылка уже использована или устарела — запроси новую в приложении.' : ''));
+      return false;
+    }
+  }
+  alert('Почта так и не совпала. Открой самое свежее письмо и введи адрес того ящика, куда оно пришло.');
+  return false;
 }
 
 async function bootUser(u) {
