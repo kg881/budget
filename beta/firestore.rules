@@ -42,7 +42,13 @@ service cloud.firestore {
                     && request.resource.data.ownerEmail == mail()
                     && request.resource.data.memberEmails.hasOnly([mail()]);
 
-      allow read:   if isMember(hid);
+      // get несуществующего документа разрешён любому вошедшему: первый вход
+      // владельца читает свой будущий hid ДО создания — иначе deny ломает онбординг.
+      // Существующие документы читают только участники. list запрещён всегда.
+      allow get:  if (mail() != null
+                      && !exists(/databases/$(database)/documents/households/$(hid)))
+                     || isMember(hid);
+      allow list: if false;
 
       // участник правит данные, но не может ни сменить владельца,
       // ни отредактировать список участников — это только владелец
