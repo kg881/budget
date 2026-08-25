@@ -51,21 +51,13 @@
   .meta .curtog.on{border-color:var(--accent);color:var(--accent)}
 
   /* masthead */
-  .masthead{display:grid;grid-template-columns:1fr auto;gap:36px;align-items:end;padding:26px 0 22px;border-bottom:2px solid var(--ink);position:relative}
-  @media(max-width:720px){.masthead{grid-template-columns:1fr;gap:20px}}
+  .masthead{padding:26px 0 22px;border-bottom:2px solid var(--ink);position:relative}
   .mast-left .kicker{margin-bottom:12px}
   .wordmark{font-family:"Playfair Display",serif;font-weight:800;font-size:96px;line-height:.86;letter-spacing:-.03em;color:var(--ink)}
   @media(max-width:720px){.wordmark{font-size:64px}}
   .wordmark .dot{color:var(--accent)}
   .dateline{margin-top:14px;font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
   .dateline .bar{color:var(--rule-2);padding:0 6px}
-  .mast-right{display:flex;flex-direction:column;gap:13px;min-width:280px;border-left:1px solid var(--rule);padding-left:24px}
-  @media(max-width:720px){.mast-right{border-left:none;padding-left:0;border-top:1px solid var(--rule);padding-top:16px}}
-  .fig{display:flex;flex-direction:column;gap:3px}
-  .fig-label{font-size:10px;text-transform:uppercase;letter-spacing:.15em;color:var(--ink-2);font-weight:600}
-  .fig-value{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:22px;font-weight:500;letter-spacing:-.02em;line-height:1}
-  .fig.small .fig-value{font-size:13.5px;color:var(--ink-2);font-weight:400;letter-spacing:0}
-  .fig.small .fig-value b{color:var(--ink);font-weight:500}
   .stamp{position:absolute;top:20px;right:0;width:92px;height:92px;border:1.5px solid var(--accent-line);border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;transform:rotate(-9deg);color:var(--accent);opacity:.85;pointer-events:none}
   @media(max-width:720px){.stamp{display:none}}
   .stamp span{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;line-height:1.35;font-weight:600}
@@ -921,7 +913,7 @@ function render(){
 
   sheet.innerHTML=
     metaBar()+
-    masthead(annDelta,endCum,cur,curT,annFact)+
+    masthead()+
     secRegister(rows,cur,annDelta,endCum)+
     secDelta(rows,cur)+
     secIncome(rows)+
@@ -947,23 +939,12 @@ function metaBar(){
   </div>`;
 }
 
-function masthead(annDelta,endCum,cur,curT,annFact){
-  const factLine=curT?`<b>${fmt(curT.if_)}</b> / <b>${fmt(curT.efClosed)}</b> / <b class="${curT.dFact>=0?'pos':'neg'}">${fmtS(curT.dFact)}</b>`:'—';
-  const iy=incYear();
-  const topLine=iy.mo
-    ? `<b class="${iy.gap>0?'neg':'pos'}">${fmt(iy.gap)} ₽</b> · ${iy.mo} ${plural(iy.mo,'месяц','месяца','месяцев')}`
-    : '<span class="muted">ещё нет фактов</span>';
+function masthead(){
   return `<header class="masthead">
     <div class="mast-left">
       <div class="kicker">Планер бюджета · горизонт ${state.settings.horizonMonths} мес</div>
       <h1 class="wordmark">Бюджет<span class="dot">.</span></h1>
       <div class="dateline">${ymFull(state.settings.horizonStart)}<span class="bar">—</span>${ymFull(ymAdd(state.settings.horizonStart,state.settings.horizonMonths-1))}<span class="bar">·</span>${state.settings.horizonMonths} ${plural(state.settings.horizonMonths,'месяц','месяца','месяцев')}</div>
-    </div>
-    <div class="mast-right">
-      <div class="fig"><div class="fig-label">Годовая дельта · план</div><div class="fig-value num ${annDelta>=0?'pos':'neg'}">${fmtS(annDelta)}<span class="rub">₽</span>${sub$(annDelta)}</div></div>
-      <div class="fig"><div class="fig-label">Доход факт · ${iy.mo} ${plural(iy.mo,'месяц','месяца','месяцев')}</div><div class="fig-value num">${fmt(iy.total)}<span class="rub">₽</span>${sub$(iy.total)}</div></div>
-      <div class="fig small"><div class="fig-label">${cur.split('-')?M_CAP[mIdx(cur)]:''} · факт · доход / расход / дельта</div><div class="fig-value num">${factLine}</div></div>
-      <div class="fig small"><div class="fig-label">Добито сверх зарплаты · факт</div><div class="fig-value num">${topLine}</div></div>
     </div>
     <div class="stamp"><span>план<br>${mYear(state.settings.horizonStart)}<br>${mYear(ymAdd(state.settings.horizonStart,state.settings.horizonMonths-1))}</span></div>
   </header>`;
