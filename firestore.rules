@@ -1,0 +1,42 @@
+rules_version = '2';
+
+/* Доступ к бюджету — по ссылке, как «доступ по ссылке» в Google Docs.
+
+   Идентификатор хозяйства (hid) — случайные 20 символов, подобрать нельзя.
+   Кто знает hid и вошёл в приложение (обычным входом по почте или анонимно,
+   что происходит само при переходе по ссылке) — работает с бюджетом полностью.
+   Перебрать хозяйства нельзя: list на коллекции households запрещён.
+
+   Куда вставить: Firebase Console → Firestore Database → Rules → Publish.
+*/
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /households/{hid} {
+      // читать конкретное хозяйство — только зная его id
+      allow get: if request.auth != null;
+      // перечислить все хозяйства нельзя никому
+      allow list: if false;
+
+      allow create, update, delete: if request.auth != null;
+
+      // месяцы, списки и всё вложенное — тем же, кто знает hid
+      match /{document=**} {
+        allow read, write: if request.auth != null;
+      }
+    }
+
+    // соответствие «почта → хозяйство» для входа по почте.
+    // Читает только владелец этой почты.
+    match /invites/{email} {
+      allow read:  if request.auth != null
+                   && request.auth.token.email_verified == true
+                   && request.auth.token.email == email;
+      allow write: if request.auth != null;
+    }
+
+    // всё остальное закрыто
+    match /{document=**} { allow read, write: if false; }
+  }
+}

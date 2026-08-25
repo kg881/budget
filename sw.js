@@ -1,7 +1,7 @@
 /* Бюджет — минимальный service worker.
    index.html: network-first (обновления приходят сразу, офлайн — из кэша).
    Иконки/манифест/шрифты Google: cache-first (не меняются). */
-const CACHE = 'budget-v3';
+const CACHE = 'budget-v4';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -29,6 +29,17 @@ self.addEventListener('fetch', e => {
       fetch(e.request, { cache: 'no-cache' })
         .then(r => { const cp = r.clone(); caches.open(CACHE).then(c => c.put(e.request, cp)); return r; })
         .catch(() => caches.match(e.request).then(m => m || caches.match('./')))
+    );
+    return;
+  }
+
+  // свой код (cloud.js и прочие .js) — сеть с ревалидацией, иначе обновления
+  // логики залипали бы в кэше так же, как раньше залипало приложение
+  if (u.origin === location.origin && u.pathname.endsWith('.js')) {
+    e.respondWith(
+      fetch(e.request, { cache: 'no-cache' })
+        .then(r => { const cp = r.clone(); caches.open(CACHE).then(c => c.put(e.request, cp)); return r; })
+        .catch(() => caches.match(e.request))
     );
     return;
   }

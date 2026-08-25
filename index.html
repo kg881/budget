@@ -537,6 +537,7 @@ function save(){
     },500);
   }
   if(devSyncCfg&&devSyncCfg.enabled&&!devApplying)scheduleDevPush();
+  if(window.__budget&&window.__budget.onSave){try{window.__budget.onSave();}catch(e){}}
 }
 // Выбор более свежей копии: если локальные правки новее файла (например, браузер
 // перезапустился, файл тихо отвалился, а ты продолжал работать) — файл НЕ затирает их,
@@ -831,6 +832,7 @@ function metaBar(){
     <span><b>Личный финансовый реестр</b></span>
     <span class="grow"></span>
     <button class="curtog ${showUsd()?'on':''}" id="curTog" title="показывать эквивалент в $">₽ ${showUsd()?'+ $':'/ $'}</button>
+    <span class="mchip" id="cloudChip" style="display:none"><span class="dot"></span></span>
     <span class="mchip" id="devChip" style="display:none"><span class="dot"></span></span>
     <span class="mchip" id="syncChip" style="display:none"><span class="dot"></span></span>
     <span class="mchip" id="cbrChip"><span class="dot"></span>ЦБ ${cbrNow?'<b>'+cbrNow.toFixed(2)+' ₽</b>':'…'}</span>
@@ -1200,6 +1202,7 @@ function settingsPanel(){
           <p class="hint">Токен и ключ хранятся только в этом браузере (не в data.json, не в бэкапе, не в публичном коде). Данные в репозитории зашифрованы (AES-256). Подойдёт классический токен со scope <b>repo</b>, но <b>безопаснее fine-grained</b>: github.com → Settings → Developer settings → Fine-grained tokens → доступ только к репо <b>budget-data</b>, права Contents: Read/Write. Тогда даже утечка кода = доступ к одному зашифрованному репо, а не ко всему аккаунту. Синк идёт сам: правки уходят через ~1.5с, подтягиваются на старте/раз в 30с.</p>
         `}
       </div>
+      <div class="set-block" style="grid-column:1/-1" id="cloudBox"></div>
       <div class="set-block" style="grid-column:1/-1">
         <h3>Шаблон расходов <span class="num" style="font-size:12px;color:var(--ink-3);font-weight:400">${fmt(state.template.expenses.reduce((a,t)=>a+(t.amount||0),0))} ₽</span></h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 36px">${tExp}</div>
@@ -1393,6 +1396,25 @@ if(location.protocol==='https:'){
   const ml=document.createElement('link');ml.rel='manifest';ml.href='manifest.webmanifest';document.head.appendChild(ml);
   if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
+/* мост для cloud.js: облачный модуль не лезет во внутренности напрямую */
+window.__budget={
+  get state(){return state;}, set state(v){state=v;},
+  save, migrate,
+  render(){return render.apply(this,arguments);},
+  persistLocal(){localStorage.setItem(LS_KEY,JSON.stringify(state));},
+  setCloudChip(kind,text){
+    const el=sheet.querySelector('#cloudChip');if(!el)return;
+    const map={off:null,setup:null,signedout:null,
+               linking:['warn','подключаю…'],syncing:['warn','синк…'],
+               ok:['ok',text||'облако'],err:['warn',text||'ошибка облака']};
+    const st=map[kind];
+    el.style.display=st?'inline-flex':'none';
+    if(st){el.className='mchip '+st[0];el.innerHTML='<span class="dot"></span>'+st[1];}
+  },
+  onSave:null, onRender:null,
+};
+const _render=render;
+render=function(){_render.apply(this,arguments);if(window.__budget.onRender){try{window.__budget.onRender();}catch(e){}}};
 window.addEventListener('beforeunload',()=>{localStorage.setItem(LS_KEY,JSON.stringify(state));});
 render();
 restoreHandle();
@@ -1400,5 +1422,6 @@ startSyncLoop();
 startDevLoop();
 fetchCbr().then(r=>{cbrNow=r;updateChips();if(showUsd())render();}).catch(()=>{cbrNow=null;const c=sheet.querySelector('#cbrChip');if(c)c.innerHTML='<span class="dot"></span>ЦБ офлайн';});
 </script>
+<script type="module" src="./cloud.js"></script>
 </body>
 </html>
