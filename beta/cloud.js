@@ -38,6 +38,7 @@ const K_MAIL  = 'budget-cloud-email-pending';
 const K_CLIENT= 'budget-cloud-client';
 const K_SNAP  = 'budget-cloud-snapshot-precloud'; // снимок ДО первого применения облака
 
+const APP_URL = 'https://kg881.github.io/budget/beta/';
 const LISTS = ['goals', 'bonuses', 'accounts', 'sinkingFunds', 'bonusHistory'];
 
 /* ---------- клиентский идентификатор (чтобы не реагировать на свои же записи) */
@@ -294,8 +295,27 @@ async function addMember(mail) {
   try {
     await setDoc(doc(db, 'invites', mail), { hid, addedBy: norm(user.email), addedAt: new Date().toISOString() });
     await updateDoc(doc(db, 'households', hid), { memberEmails: arrayUnion(mail), updatedBy: ME });
-    alert('Готово. Теперь ' + mail + ' может открыть приложение, ввести свою почту и войти по ссылке из письма.');
+    await inviteLink(mail, true);
   } catch (e) { alert('Не вышло: ' + e.message); }
+}
+
+/* Выслать участнику письмо со ссылкой входа. Отдельно от sendLink(): там почта
+   запоминается для ЭТОГО браузера, а тут письмо уходит другому человеку. */
+async function inviteLink(mail, first) {
+  mail = norm(mail);
+  try {
+    setStatus('linking', 'отправляю…');
+    await sendSignInLinkToEmail(auth, mail, { url: APP_URL, handleCodeInApp: true });
+    setStatus('ok', 'облако ' + hhmm());
+    alert((first ? 'Доступ выдан. ' : '') + 'Письмо со ссылкой для входа отправлено на ' + mail +
+      '.\n\nПусть откроет ссылку на своём телефоне или компьютере и введёт эту же почту. ' +
+      'Если письма нет во «Входящих» — искать в «Спаме», отправитель noreply@' +
+      (auth.app.options.projectId || '') + '.firebaseapp.com');
+  } catch (e) {
+    setStatus('ok', 'облако ' + hhmm());
+    alert('Доступ выдан, но письмо отправить не вышло: ' + e.message +
+      '\n\nОна всё равно может войти сама: открыть ' + APP_URL + ' и запросить ссылку по своей почте.');
+  }
 }
 async function removeMember(mail) {
   mail = norm(mail);
@@ -314,7 +334,7 @@ async function sendLink(mail) {
   if (!mail) { alert('Введи почту'); return; }
   try {
     setStatus('linking', 'отправляю…');
-    await sendSignInLinkToEmail(auth, mail, { url: location.href.split('?')[0], handleCodeInApp: true });
+    await sendSignInLinkToEmail(auth, mail, { url: APP_URL, handleCodeInApp: true });
     localStorage.setItem(K_MAIL, mail);
     setStatus('signedout', '');
     alert('Письмо отправлено на ' + mail + '.\nОткрой ссылку из письма на этом же устройстве.');
@@ -454,7 +474,9 @@ function renderBox() {
   const members = (household && household.memberEmails || []).map(norm);
   const rows = members.map(m => `
     <div class="set-row"><span class="l">${esc(m)}${m === owner ? ' · владелец' : ''}${m === mine ? ' · это ты' : ''}</span>
-    ${isOwner && m !== owner ? `<button class="btn sm" data-rm="${esc(m)}">Отключить</button>` : '<span class="l" style="color:var(--ink-3)">доступ есть</span>'}</div>`).join('');
+    ${isOwner && m !== owner
+        ? `<span style="display:flex;gap:6px"><button class="btn sm" data-send="${esc(m)}">Выслать ссылку</button><button class="btn sm" data-rm="${esc(m)}">Отключить</button></span>`
+        : '<span class="l" style="color:var(--ink-3)">доступ есть</span>'}</div>`).join('');
 
   box.innerHTML = `<h3>Общий доступ по почте</h3>
     <div class="set-row"><span class="l">Ты вошёл как</span><span class="l" style="color:var(--pos)">${esc(user.email)}${isOwner ? ' · владелец' : ' · участник'}</span></div>
@@ -471,6 +493,7 @@ function renderBox() {
 
   box.querySelector('#clAdd') && (box.querySelector('#clAdd').onclick = () => addMember(box.querySelector('#clNew').value));
   box.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => removeMember(b.dataset.rm));
+  box.querySelectorAll('[data-send]').forEach(b => b.onclick = () => inviteLink(b.dataset.send, false));
   box.querySelector('#clOut').onclick = async () => { detach(); ready = false; await signOut(auth); location.reload(); };
   if (snap) box.querySelector('#clRestore').onclick = restoreSnapshot;
 }
