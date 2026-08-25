@@ -347,7 +347,9 @@ async function sendLink(mail) {
 
 async function completeLinkSignIn() {
   if (!isSignInWithEmailLink(auth, location.href)) return false;
-  let mail = localStorage.getItem(K_MAIL);
+  // Почта может быть зашита в саму ссылку (?m=…) — тогда приглашённому вообще
+  // ничего вводить не надо: нажал ссылку и уже внутри.
+  let mail = norm(new URLSearchParams(location.search).get('m') || '') || localStorage.getItem(K_MAIL);
   for (let attempt = 0; attempt < 4; attempt++) {
     if (!mail) mail = norm(prompt(attempt === 0
       ? 'Введи почту, на которую пришло ЭТО письмо:'
