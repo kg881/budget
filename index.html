@@ -233,17 +233,6 @@
   .goal-done{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--rule);font-size:12.5px;color:var(--ink-2)}
   .goal-done .a{font-family:"IBM Plex Mono",monospace;color:var(--ink-3)}
 
-  /* sinking funds */
-  .sfund{padding:12px 0;border-bottom:1px solid var(--rule)}
-  .sf-top{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:12px}
-  .sf-top .nm{font-size:13px;color:var(--ink)}
-  .sf-top .mo{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-2);white-space:nowrap}
-  .sf-top .mo input{width:70px}
-  .sf-top .bal{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:14px;color:var(--ink);white-space:nowrap}
-  .sf-top .acts{display:flex;gap:5px}
-  .sf-track{height:6px;background:var(--paper-2);border:1px solid var(--rule-2);position:relative;margin-top:9px}
-  .sf-track .fl{position:absolute;left:0;top:0;bottom:0;background:var(--accent)}
-  .sf-meta{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-top:6px}
 
   /* inputs / buttons */
   input.inp{font-family:inherit;font-size:inherit;color:inherit;background:transparent;border:none;border-bottom:1px solid var(--rule-2);padding:1px 0;width:100%}
@@ -492,7 +481,6 @@ function reconcilePool(){
 }
 function sortedGoals(){return state.goals.filter(g=>!g.done).slice().sort((a,b)=>(a.priority||99)-(b.priority||99)||(a.targetMonth||'').localeCompare(b.targetMonth||''));}
 function accountsRub(){return (state.accounts||[]).reduce((s,a)=>s+((a.cur==='USD'?(a.balance||0)*curRate():(a.balance||0))),0);}
-function sinkingTotal(){return (state.sinkingFunds||[]).reduce((s,f)=>s+(f.balance||0),0);}
 
 function effBonus(){
   const ov=state.bonusOverrides||{};
@@ -819,7 +807,6 @@ function render(){
     secDelta(rows,cur)+
     secMonth()+
     secGoals(rows,annDelta)+
-    secFunds()+
     settingsPanel()+
     colophon();
 
@@ -1051,7 +1038,6 @@ function secGoals(rows,annDelta){
     <div class="recon">
       <span>на счетах <span class="rv">${fmt(accRub)} ₽</span></span>
       <span>в пуле (не потрачено) <span class="rv">${fmt(total)} ₽</span></span>
-      <span>конверты <span class="rv">${fmt(sinkingTotal())} ₽</span></span>
       <span>сверка счета−пул <span class="rv" style="${Math.abs(reconDiff)>1?(reconDiff<0?'color:var(--neg)':'color:var(--pos)'):''}">${fmtS(reconDiff)} ₽</span></span>
     </div>`:'';
 
@@ -1097,34 +1083,6 @@ function bonusRows(){
       <span style="display:flex;gap:5px;align-items:center"><input class="inp ni w56" data-f="rate" value="${b.rate??''}" placeholder="курс"><button class="cbrbtn" data-act="bcbr">ЦБ</button></span>
       <span style="display:flex;gap:6px;align-items:center;justify-content:flex-end"><span class="num" style="font-size:12px;color:var(--ink-3)">${fmt(bonusRub(b))} ₽</span><button class="entry re" data-act="bdel">✕</button></span>
     </div>`).join('');
-}
-
-function secFunds(){
-  const funds=state.sinkingFunds||[];
-  const rows=funds.length?funds.map(f=>{
-    const cap=Math.max(1,(f.monthly||0)*12);
-    const pct=Math.min(100,(f.balance||0)/cap*100);
-    return `<div class="sfund" data-sfid="${f.id}">
-      <div class="sf-top">
-        <span class="nm"><input class="inp" data-f="name" value="${esc(f.name)}" placeholder="напр. Страховка авто"></span>
-        <span class="mo">ежемес <input class="inp ni" data-f="monthly" value="${f.monthly??''}" placeholder="₽"> ₽</span>
-        <span class="bal">${fmt(f.balance||0)} ₽${sub$(f.balance||0)}</span>
-        <span class="acts"><button class="btn sm pos" data-act="sfmo" title="отложить месячный взнос">+ мес</button><button class="btn sm" data-act="sfspend" title="потратить из конверта">трата</button><button class="btn sm" data-act="sfdel">✕</button></span>
-      </div>
-      <div class="sf-track"><div class="fl" style="width:${pct.toFixed(1)}%"></div></div>
-      <div class="sf-meta"><span>накоплено ${pct.toFixed(0)}% от годового взноса</span><span>цель года ≈ ${fmt(cap)} ₽</span></div>
-    </div>`;
-  }).join(''):'<div class="empty">Конвертов пока нет. Заведи под нерегулярный крупняк — страховку, ТО, отпуск, налоги — и откладывай туда каждый месяц по чуть-чуть.</div>';
-  return `<section class="sec">
-    <div class="sec-head"><span class="idx">05</span><h2>Конверты</h2><span class="sec-note">sinking funds · копишь заранее под нерегулярный крупняк</span></div>
-    ${rows}
-    <div class="addcat" style="margin-top:12px">
-      <input class="inp" id="sfName" placeholder="Новый конверт" style="max-width:200px">
-      <input class="inp ni w90" id="sfMo" placeholder="₽/мес">
-      <button class="btn solid sm" id="sfAdd">+ конверт</button>
-    </div>
-    <p class="hint">Каждый месяц жмёшь «+ мес» — взнос капает в конверт. Когда приходит крупный счёт (страховка, ТО) — «трата» списывает из накопленного, а не бьёт по месячному бюджету.</p>
-  </section>`;
 }
 
 function settingsPanel(){
@@ -1182,7 +1140,7 @@ function settingsPanel(){
       <div class="set-block">
         <h3>Отображение</h3>
         <div class="set-row"><span class="l">Показывать эквивалент в $</span><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="sShowUsd" ${showUsd()?'checked':''}> <span class="l">${showUsd()?'включено':'выключено'}</span></label></div>
-        <p class="hint">Пересчёт по курсу ЦБ (сейчас ${cbrNow?cbrNow.toFixed(2)+' ₽':'загружается…'}), иначе по плановому курсу ${s.planRate} ₽. Дублирует ₽-суммы мелким $-эквивалентом в шапке, целях и конвертах. Тумблер также в верхней панели.</p>
+        <p class="hint">Пересчёт по курсу ЦБ (сейчас ${cbrNow?cbrNow.toFixed(2)+' ₽':'загружается…'}), иначе по плановому курсу ${s.planRate} ₽. Дублирует ₽-суммы мелким $-эквивалентом в шапке и целях. Тумблер также в верхней панели.</p>
       </div>
       <div class="set-block">
         <h3>Синхронизация мак ↔ айфон</h3>
@@ -1216,7 +1174,7 @@ function settingsPanel(){
 
 function colophon(){
   return `<footer class="colophon">
-    <span><b>Бюджет</b> · личный реестр · v3 · закрытие месяца · конверты · ручное распределение пула</span>
+    <span><b>Бюджет</b> · личный реестр · v3 · закрытие месяца · ручное распределение пула</span>
     <span>Все суммы в ₽, если не указано иное · факт заполняется по мере закрытия периода</span>
     <span>Обновлено ${ddmm(todayStr())}.${mYear(todayYM())}</span>
   </footer>`;
@@ -1291,16 +1249,6 @@ function bind(rows){
   sheet.querySelectorAll('.goal-done[data-gid] [data-act=gdel]').forEach(b=>b.addEventListener('click',()=>{const gid=b.closest('[data-gid]').dataset.gid;if(confirm('Удалить из списка?')){state.goals=state.goals.filter(x=>x.id!==gid);save();render();}}));
   sheet.querySelector('#gAdd')?.addEventListener('click',()=>{const name=sheet.querySelector('#gName').value.trim();const amount=parseNum(sheet.querySelector('#gAmt').value);const tm=sheet.querySelector('#gMonth').value;if(!name||!amount){alert('Нужны название и сумма');return;}const maxP=state.goals.reduce((m,g)=>Math.max(m,g.priority||0),0);state.goals.push({id:uid(),name,amount,targetMonth:tm,done:false,spent:0,saved:0,priority:maxP+1});save();render();});
 
-  // sinking funds
-  sheet.querySelectorAll('.sfund[data-sfid]').forEach(el=>{
-    el.addEventListener('change',e=>{const f=state.sinkingFunds.find(x=>x.id===el.dataset.sfid);if(!f)return;const k=e.target.dataset.f;if(!k)return;if(k==='name')f.name=e.target.value;else f[k]=parseNum(e.target.value)||0;save();render();});
-    el.addEventListener('click',e=>{const btn=e.target.closest('[data-act]');if(!btn)return;const f=state.sinkingFunds.find(x=>x.id===el.dataset.sfid);if(!f)return;
-      if(btn.dataset.act==='sfmo'){f.balance=(f.balance||0)+(f.monthly||0);save();render();}
-      if(btn.dataset.act==='sfspend'){const v=parseNum(prompt('Сколько потрачено из конверта «'+f.name+'», ₽:',f.balance||0));if(v!=null){f.balance=Math.max(0,(f.balance||0)-v);save();render();}}
-      if(btn.dataset.act==='sfdel'){if(confirm('Удалить конверт?')){state.sinkingFunds=state.sinkingFunds.filter(x=>x.id!==f.id);save();render();}}
-    });
-  });
-  sheet.querySelector('#sfAdd')?.addEventListener('click',()=>{const nm=sheet.querySelector('#sfName').value.trim();const mo=parseNum(sheet.querySelector('#sfMo').value)||0;if(!nm){sheet.querySelector('#sfName').focus();return;}state.sinkingFunds.push({id:uid(),name:nm,monthly:mo,balance:0});save();render();});
 
   // bonuses
   sheet.querySelectorAll('.inc[data-bid]').forEach(el=>{
