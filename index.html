@@ -23,6 +23,7 @@
     --accent:#B0611A; --accent-ink:#8F4D14;
     --accent-soft:rgba(176,97,26,.10); --accent-line:rgba(176,97,26,.30);
     --pos:#556A34; --neg:#8A3B2A;
+    --src-sal:#1C1A16; --src-bon:#B0611A; --src-evt:#4A6272; --src-oth:#A29B8A;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -132,11 +133,49 @@
   @media(max-width:820px){.ledger{padding-left:0}}
   .block-label{font-size:10px;text-transform:uppercase;letter-spacing:.15em;color:var(--ink-2);font-weight:600;display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
   .block-label .r{font-family:"IBM Plex Mono",monospace;letter-spacing:.04em;color:var(--ink-3)}
-  .mlock .cat .mk,.mlock .addcat,.mlock #incFact,.mlock .cat .del,.mlock .cat .nm input{pointer-events:none;opacity:.6}
+  .mlock .cat .mk,.mlock .addcat,.mlock .addinc,.mlock .cat .nm input{pointer-events:none;opacity:.6}
+  .mlock .incrow .del,.mlock .cat .del{pointer-events:none;opacity:0}
   .mlock-note{margin-top:6px;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--pos)}
 
   /* income rows */
   .inc{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--rule)}
+  .incrow{display:grid;grid-template-columns:130px 1fr 96px auto;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--rule)}
+  .incrow .kd{display:flex;align-items:center;gap:7px}
+  .incrow .sw{width:9px;height:9px;flex:none}
+  .incrow select.inp{width:100%;font-size:12.5px}
+  .incrow .amtw{text-align:right}
+  .incrow .amt{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:12.5px;text-align:right}
+  .incrow .del{appearance:none;background:none;border:none;color:var(--ink-3);cursor:pointer;font-size:13px;line-height:1;padding:2px 4px;opacity:0;transition:.12s}
+  .incrow:hover .del{opacity:1} .incrow .del:hover{color:var(--neg)}
+  /* на тач-экранах нет наведения — крестики удаления должны быть видны сразу */
+  @media(hover:none){.incrow .del,.cat .del{opacity:.55}}
+  .addinc{display:flex;gap:8px;align-items:center;padding:10px 0 0;flex-wrap:wrap}
+  .incsplit{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+  .incsplit .s{border-top:1px solid var(--rule-2);padding-top:7px}
+  .incsplit .k{display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-2);font-weight:600}
+  .incsplit .v{display:block;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:15px;font-weight:600;margin-top:3px}
+  .verdict{margin-top:14px;padding:11px 13px;border-left:3px solid var(--rule-2);background:rgba(28,26,22,.028);font-size:12.5px;line-height:1.6;color:var(--ink)}
+  .verdict.warn{border-left-color:var(--accent);background:var(--accent-soft)}
+  .verdict.ok{border-left-color:var(--pos);background:rgba(85,106,52,.07)}
+  .verdict b{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-weight:600}
+  .verdict .sub{display:block;margin-top:5px;font-size:11.5px;color:var(--ink-2)}
+  @media(max-width:600px){.incsplit{grid-template-columns:1fr 1fr}.incrow{grid-template-columns:118px 1fr 76px auto}}
+
+  /* источники дохода: годовая структура */
+  .srcyear{margin-bottom:20px}
+  .srcyear .track{display:flex;height:15px;background:var(--rule)}
+  .srcyear .track i{display:block;height:100%;box-shadow:2px 0 0 var(--paper)}
+  .srcyear .track i:last-child{box-shadow:none}
+  .srcyear .lg{display:flex;flex-wrap:wrap;gap:7px 24px;margin-top:11px;font-size:11.5px;color:var(--ink-2)}
+  .srcyear .lg .it{display:flex;align-items:baseline;gap:7px}
+  .srcyear .lg .sw{width:9px;height:9px;flex:none;transform:translateY(1px)}
+  .srcyear .lg b{color:var(--ink);font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-weight:600}
+  .srcyear .lg .pc{color:var(--ink-3);font-family:"IBM Plex Mono",monospace;font-size:10.5px}
+  .sw.salary{background:var(--src-sal)} .sw.bonus{background:var(--src-bon)}
+  .sw.event{background:var(--src-evt)} .sw.other{background:var(--src-oth)}
+  .tblwrap{overflow-x:auto}
+  table.reg.src tbody tr{cursor:default}
+  table.reg.src td.gap{color:var(--accent-ink);font-weight:500} table.reg.src td.gap.zero{color:var(--ink-3);font-weight:400}
   .inc .nm{font-size:12.5px;color:var(--ink)}
   .inc .cur{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-3);width:14px}
   .inc-foot{display:flex;justify-content:space-between;padding-top:10px;margin-top:2px;border-top:1px solid var(--rule-2);font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-2);font-weight:600}
@@ -288,7 +327,11 @@
   /* ===== мобильная вёрстка (айфон) ===== */
   @media(max-width:720px){
     /* реестр: на телефоне остаются № · Месяц · Дельта (+факт) · Накопление */
-    table.reg th:nth-child(n+3):nth-child(-n+6),table.reg td:nth-child(n+3):nth-child(-n+6){display:none}
+    table.reg:not(.src) th:nth-child(n+3):nth-child(-n+6),table.reg:not(.src) td:nth-child(n+3):nth-child(-n+6){display:none}
+    /* источники: на телефоне остаются Месяц · Зарплата · Бонус · Сверх зп */
+    table.reg.src th:nth-child(n+4):nth-child(-n+7),
+    table.reg.src td:nth-child(n+4):nth-child(-n+7){display:none}
+    table.reg.src td:not(.mon),table.reg.src th:not(.lft){padding-left:12px}
     .col .cap{display:none}
     .col.cur .cap{display:block}
     .navbtn{width:32px;height:32px;font-size:14px}
@@ -335,8 +378,17 @@ const M_SH=['янв','фев','мар','апр','май','июн','июл','ав
 const M_DAT=['январю','февралю','марту','апрелю','маю','июню','июлю','августу','сентябрю','октябрю','ноябрю','декабрю'];
 const uid=()=>'x'+Math.random().toString(36).slice(2,9);
 
+/* откуда пришли деньги: зарплата отдельно, всё остальное — «сверх зп» */
+const INC_KINDS=[
+  {k:'salary',label:'Зарплата'},
+  {k:'bonus', label:'Бонус'},
+  {k:'event', label:'Мероприятие'},
+  {k:'other', label:'Прочее'},
+];
+const SRC_LABEL={salary:'Зарплата',bonus:'Бонус',event:'Мероприятие',other:'Прочее'};
+
 function defaultState(){const ym=todayYM();return{
-  version:7,
+  version:8,
   settings:{planRate:78,incomePlan:0,horizonStart:ym,horizonMonths:12,bonusCons:300,bonusAvg:1000,showUsd:false},
   template:{
     expenses:[
@@ -443,7 +495,34 @@ function migrate(){
     (state.goals||[]).forEach(g=>{if(g.monthly==null)g.monthly=0;if(!Array.isArray(g.plan))g.plan=[];});
     state.version=7;
   }
+  if(state.version<8){
+    // Разбивка дохода по источникам. Старое поле incomeFact — это фактически
+    // зарплата (других источников в таблице не было), поэтому переносим её
+    // в первую строку источников. Само incomeFact остаётся как сумма — на нём
+    // держится вся остальная арифметика и облачная копия.
+    Object.values(state.months||{}).forEach(m=>{
+      if(!Array.isArray(m.incomeSrc)){
+        m.incomeSrc = m.incomeFact!=null ? [{id:uid(),kind:'salary',name:'',amount:m.incomeFact}] : [];
+      }
+    });
+    state.version=8;
+  }
   (state.goals||[]).forEach(g=>{if(g.monthly==null)g.monthly=0;if(!Array.isArray(g.plan))g.plan=[];});
+  // Сводим разбивку и итоговую сумму. Нужно на случай, когда второе устройство ещё
+  // держит в кэше старую версию приложения с одним полем дохода: если оно записало
+  // incomeFact, а разбивка тут из одной строки — подтягиваем строку под новое число.
+  // Если источников несколько, главная — разбивка, сумма пересчитывается из неё.
+  Object.values(state.months||{}).forEach(m=>{
+    if(!Array.isArray(m.incomeSrc))m.incomeSrc=[];
+    const sum=m.incomeSrc.reduce((a,r)=>a+(r.amount||0),0);
+    if(!m.incomeSrc.length){
+      if(m.incomeFact!=null)m.incomeSrc=[{id:uid(),kind:'salary',name:'',amount:m.incomeFact}];
+    }else if(m.incomeSrc.length===1&&m.incomeFact!=null&&sum!==m.incomeFact){
+      m.incomeSrc[0].amount=m.incomeFact;
+    }else{
+      m.incomeFact=Math.round(sum);
+    }
+  });
   if(!state.bonusHistory)state.bonusHistory=[];
   if(!state.bonusOverrides)state.bonusOverrides={};
   if(!state.accounts)state.accounts=[];
@@ -454,7 +533,7 @@ function migrate(){
 
 /* ===================== model helpers ===================== */
 function monthTpl(){return{
-  incomeFact:null,locked:false,
+  incomeFact:null,incomeSrc:[],locked:false,
   expenses:state.template.expenses.map(t=>({id:uid(),tplId:t.id,name:t.name,plan:t.amount,fact:null,closed:false,closedDate:null})),
 };}
 function getMonth(ym){return state.months[ym]||monthTpl();}
@@ -462,7 +541,22 @@ function matM(ym){if(!state.months[ym])state.months[ym]=monthTpl();return state.
 function horizon(){const s=state.settings;return Array.from({length:s.horizonMonths},(_,i)=>ymAdd(s.horizonStart,i));}
 
 function incPlan(ym){return state.settings.incomePlan||0;}
-function incFact(ym){const v=getMonth(ym).incomeFact;return v==null?null:v;}
+function incSrc(ym){const m=getMonth(ym);return Array.isArray(m.incomeSrc)?m.incomeSrc:[];}
+/* incomeFact — производная сумма источников: её читает старый код и облако */
+function incSync(m){
+  if(!Array.isArray(m.incomeSrc)){m.incomeSrc=[];return;}
+  m.incomeFact = m.incomeSrc.length ? Math.round(m.incomeSrc.reduce((a,r)=>a+(r.amount||0),0)) : null;
+}
+function incBy(ym){
+  const m=getMonth(ym),src=Array.isArray(m.incomeSrc)?m.incomeSrc:[];
+  const by={salary:0,bonus:0,event:0,other:0};
+  src.forEach(r=>{const k=(by[r.kind]!=null)?r.kind:'other';by[k]+=(r.amount||0);});
+  // страховка для копий, где источники ещё не заведены, а сумма есть
+  if(!src.length&&m.incomeFact!=null)by.salary=m.incomeFact;
+  const sal=by.salary,extra=by.bonus+by.event+by.other;
+  return{by,sal,extra,total:sal+extra,has:src.length>0||m.incomeFact!=null,n:src.length};
+}
+function incFact(ym){const b=incBy(ym);return b.has?b.total:null;}
 function bonusRub(b){return b.rub!=null?b.rub:(b.usd!=null?b.usd*(b.rate||state.settings.planRate):0);}
 
 function totals(ym){
@@ -473,16 +567,34 @@ function totals(ym){
   const closed=m.expenses.filter(e=>e.closed);
   const anyClosed=closed.length>0;
   const efClosed=closed.reduce((s,e)=>s+((e.fact!=null?e.fact:e.plan)||0),0);
+  // «реально ушло»: закрытые категории + открытые, где уже проставлен факт
+  const efReal=m.expenses.reduce((s,e)=>s+(e.fact!=null?(e.fact||0):(e.closed?(e.plan||0):0)),0);
+  const ib=incBy(ym);
+  const topup=Math.max(0,efReal-ib.sal);   // сколько расходов зарплата не покрыла
   const openSum=m.expenses.filter(e=>!e.closed).reduce((s,e)=>s+(e.plan||0),0);
   const dPlan=ip-ep;
   const hasFact=if_!=null||anyClosed;
   const dFact=hasFact?((if_!=null?if_:ip)-efClosed):null;
-  return{ip,if_,ep,efClosed,openSum,anyClosed,closedCount:closed.length,catCount:m.expenses.length,dPlan,dFact,hasFact,locked:!!m.locked};
+  return{ip,if_,ep,efClosed,efReal,openSum,anyClosed,closedCount:closed.length,catCount:m.expenses.length,dPlan,dFact,hasFact,locked:!!m.locked,
+    sal:ib.sal,extra:ib.extra,incBy:ib.by,incHas:ib.has,incN:ib.n,topup};
 }
 function annualPlanDelta(){return horizon().reduce((s,ym)=>s+totals(ym).dPlan,0);}
 function annualFactDelta(){let sum=0,mo=0;horizon().forEach(ym=>{const t=totals(ym);if(t.dFact!=null){sum+=t.dFact;mo++;}});return{sum,mo};}
 function lockedFactCum(){let sum=0,mo=0;horizon().forEach(ym=>{const t=totals(ym);if(t.locked&&t.dFact!=null){sum+=t.dFact;mo++;}});return{sum,mo};}
 function endCumulative(){let c=0;horizon().forEach(ym=>c+=totals(ym).dPlan);return c;}
+/* свод «откуда доход» за горизонт: только месяцы, где что-то есть по факту */
+function incYear(){
+  const by={salary:0,bonus:0,event:0,other:0};
+  let gap=0,extra=0,sal=0,spent=0,mo=0,uncov=0;
+  horizon().forEach(ym=>{
+    const t=totals(ym);
+    if(!t.incHas&&!t.efReal)return;
+    mo++;sal+=t.sal;extra+=t.extra;spent+=t.efReal;gap+=t.topup;
+    uncov+=Math.max(0,t.topup-t.extra);
+    Object.keys(by).forEach(k=>{by[k]+=(t.incBy[k]||0);});
+  });
+  return{by,gap,extra,sal,spent,mo,uncov,total:sal+extra};
+}
 /* пул: ты сам распределяешь свободные деньги по целям (g.saved) */
 function poolIn(){return state.bonuses.reduce((s,b)=>s+bonusRub(b),0);}                                  // всего заведено в пул
 function poolSpentDone(){return state.goals.filter(g=>g.done).reduce((s,g)=>s+(g.spent||0),0);}          // потрачено на купленные цели
@@ -812,8 +924,10 @@ function render(){
   const H=horizon();
   if(!H.includes(detailYM))detailYM=H.includes(todayYM())?todayYM():H[0];
   const rows=[];let cum=0;
-  // накопление: закрытые месяцы идут по факту, остальные — по плану
-  H.forEach((ym,i)=>{const t=totals(ym);cum+=(t.locked&&t.dFact!=null)?t.dFact:t.dPlan;rows.push({ym,i,...t,cum});});
+  // Накопление — чисто плановая линия. Фактическую дельту в него не подмешиваем:
+  // часть трат закрывается из бонусов мимо таблицы, поэтому «факт накопления»
+  // всё равно был бы неверным. Что реально пришлось добить сверх зп — в секции 03.
+  H.forEach((ym,i)=>{const t=totals(ym);cum+=t.dPlan;rows.push({ym,i,...t,cum});});
   const annDelta=annualPlanDelta();
   const annFact=annualFactDelta();
   const endCum=rows.length?rows[rows.length-1].cum:0;
@@ -825,6 +939,7 @@ function render(){
     masthead(annDelta,endCum,cur,curT,annFact)+
     secRegister(rows,cur,annDelta,endCum)+
     secDelta(rows,cur)+
+    secIncome(rows)+
     secMonth()+
     secGoals(rows,annDelta)+
     settingsPanel()+
@@ -849,8 +964,10 @@ function metaBar(){
 
 function masthead(annDelta,endCum,cur,curT,annFact){
   const factLine=curT?`<b>${fmt(curT.if_)}</b> / <b>${fmt(curT.efClosed)}</b> / <b class="${curT.dFact>=0?'pos':'neg'}">${fmtS(curT.dFact)}</b>`:'—';
-  const lf=lockedFactCum();
-  const factYr=lf.mo?`<b class="${lf.sum>=0?'pos':'neg'}">${fmtS(lf.sum)} ₽</b> · ${lf.mo} ${plural(lf.mo,'мес закрыт','мес закрыто','мес закрыто')}`:(annFact.mo?`<span class="muted">${annFact.mo} мес с фактом, ни один не закрыт</span>`:'ещё нет закрытых');
+  const iy=incYear();
+  const topLine=iy.mo
+    ? `<b class="${iy.gap>0?'neg':'pos'}">${fmt(iy.gap)} ₽</b> · ${iy.mo} ${plural(iy.mo,'месяц','месяца','месяцев')}`
+    : '<span class="muted">ещё нет фактов</span>';
   return `<header class="masthead">
     <div class="mast-left">
       <div class="kicker">Планер бюджета · горизонт ${state.settings.horizonMonths} мес</div>
@@ -859,9 +976,9 @@ function masthead(annDelta,endCum,cur,curT,annFact){
     </div>
     <div class="mast-right">
       <div class="fig"><div class="fig-label">Годовая дельта · план</div><div class="fig-value num ${annDelta>=0?'pos':'neg'}">${fmtS(annDelta)}<span class="rub">₽</span>${sub$(annDelta)}</div></div>
-      <div class="fig"><div class="fig-label">Накопление к ${ymFull(ymAdd(state.settings.horizonStart,state.settings.horizonMonths-1),true)}</div><div class="fig-value num ${endCum<0?'neg':''}">${fmtS(endCum)}<span class="rub">₽</span>${sub$(endCum)}</div></div>
+      <div class="fig"><div class="fig-label">Доход факт · ${iy.mo} ${plural(iy.mo,'месяц','месяца','месяцев')}</div><div class="fig-value num">${fmt(iy.total)}<span class="rub">₽</span>${sub$(iy.total)}</div></div>
       <div class="fig small"><div class="fig-label">${cur.split('-')?M_CAP[mIdx(cur)]:''} · факт · доход / расход / дельта</div><div class="fig-value num">${factLine}</div></div>
-      <div class="fig small"><div class="fig-label">Накоплено фактом · закрытые месяцы</div><div class="fig-value num">${factYr}</div></div>
+      <div class="fig small"><div class="fig-label">Добито сверх зарплаты · факт</div><div class="fig-value num">${topLine}</div></div>
     </div>
     <div class="stamp"><span>план<br>${mYear(state.settings.horizonStart)}<br>${mYear(ymAdd(state.settings.horizonStart,state.settings.horizonMonths-1))}</span></div>
   </header>`;
@@ -878,7 +995,7 @@ function secRegister(rows,cur,annDelta,endCum){
       <td class="no num">${String(r.i+1).padStart(2,'0')}</td>
       <td class="mon">${M_CAP[mIdx(r.ym)]} <span class="yr">${mYear(r.ym).slice(2)}</span>${isCur?'<span class="tag">текущий</span>':''}${r.locked?'<span class="lockb">✓</span>':''}</td>
       <td class="num">${fmt(r.ip)}</td>
-      <td class="num ${r.if_==null?'muted':''}">${r.if_==null?'—':fmt(r.if_)}</td>
+      <td class="num ${r.if_==null?'muted':''}">${r.if_==null?'—':fmt(r.if_)}${r.extra>0?`<span class="factnote num">зп ${fmt(r.sal)}</span>`:''}</td>
       <td class="num">${fmt(r.ep)}</td>
       <td class="num ${r.anyClosed?'':'muted'}">${r.anyClosed?fmt(r.efClosed):'—'}</td>
       <td class="num dl ${r.dPlan<0?'neg':''}">${fmtS(r.dPlan)}${r.dFact!=null?`<span class="factnote num">факт ${fmtS(r.dFact)}</span>`:''}</td>
@@ -886,13 +1003,13 @@ function secRegister(rows,cur,annDelta,endCum){
     </tr>`;
   }).join('');
   return `<section class="sec">
-    <div class="sec-head"><span class="idx">01</span><h2>Реестр года</h2><span class="sec-note">план / факт · дельта · накопление нарастающим итогом</span></div>
+    <div class="sec-head"><span class="idx">01</span><h2>Реестр года</h2><span class="sec-note">план / факт · дельта · накопление по плану</span></div>
     <table class="reg">
       <thead><tr>
         <th class="lft">№</th><th class="lft">Месяц</th>
         <th>Доход<span class="sub">план</span></th><th>Доход<span class="sub">факт</span></th>
         <th>Расход<span class="sub">план</span></th><th>Расход<span class="sub">факт</span></th>
-        <th>Дельта<span class="sub">план</span></th><th>Накопление<span class="sub">факт закрытых + план</span></th>
+        <th>Дельта<span class="sub">план</span></th><th>Накопление<span class="sub">план, нарастающим</span></th>
       </tr></thead>
       <tbody>${body}</tbody>
       <tfoot><tr>
@@ -925,11 +1042,97 @@ function secDelta(rows,cur){
   </section>`;
 }
 
+/* ===== 03 · Источники дохода: откуда деньги и чем закрыт перерасход ===== */
+function secIncome(rows){
+  const head=`<div class="sec-head"><span class="idx">03</span><h2>Источники дохода</h2><span class="sec-note">откуда пришло · чем закрыт перерасход над зп</span></div>`;
+  const R=rows.filter(r=>r.incHas||r.efReal>0);
+  if(!R.length)return `<section class="sec">${head}
+    <div class="empty">Пока ни одного источника. Открой месяц ниже и добавь строки: зарплата, бонус, мероприятие — здесь появится разбивка.</div>
+  </section>`;
+
+  const iy=incYear();
+  const tot=iy.total||1;
+  const z=v=>v>0?fmt(v):'—';
+  const seg=k=>{const v=iy.by[k]||0;if(v<=0)return'';return `<i class="sw ${k}" style="width:${(v/tot*100).toFixed(2)}%" title="${SRC_LABEL[k]}: ${fmt(v)} ₽"></i>`;};
+  const leg=INC_KINDS.filter(x=>(iy.by[x.k]||0)>0).map(x=>{
+    const v=iy.by[x.k];
+    return `<span class="it"><i class="sw ${x.k}"></i>${x.label} <b>${fmt(v)} ₽</b> <span class="pc">${(v/tot*100).toFixed(0)}%</span></span>`;
+  }).join('');
+
+  const body=R.map(r=>{
+    const c=k=>(r.incBy[k]||0)>0?fmt(r.incBy[k]):'<span class="muted">—</span>';
+    return `<tr data-ym="${r.ym}">
+      <td class="mon">${M_CAP[mIdx(r.ym)]} <span class="yr">${mYear(r.ym).slice(2)}</span>${r.locked?'<span class="lockb">✓</span>':''}</td>
+      <td class="num">${c('salary')}</td>
+      <td class="num">${c('bonus')}</td>
+      <td class="num">${c('event')}</td>
+      <td class="num">${c('other')}</td>
+      <td class="num">${r.incHas?fmt(r.sal+r.extra):'<span class="muted">—</span>'}</td>
+      <td class="num ${r.efReal?'':'muted'}">${r.efReal?fmt(r.efReal):'—'}</td>
+      <td class="num gap ${r.topup>0?'':'zero'}">${r.topup>0?fmt(r.topup):'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const note=iy.uncov>0
+    ? `<p class="hint">Расходы превысили зарплату на <b>${fmt(iy.gap)} ₽</b> за ${iy.mo} ${plural(iy.mo,'месяц','месяца','месяцев')}. Источниками сверх зп записано <b>${fmt(iy.extra)} ₽</b> — остальные <b>${fmt(iy.uncov)} ₽</b> ушли из бонусов мимо таблицы. Впиши их строкой «Бонус» в нужном месяце, и картина сойдётся.</p>`
+    : `<p class="hint">Расходы превысили зарплату на <b>${fmt(iy.gap)} ₽</b> за ${iy.mo} ${plural(iy.mo,'месяц','месяца','месяцев')} — и всё это закрыто записанными источниками сверх зп (${fmt(iy.extra)} ₽).</p>`;
+
+  return `<section class="sec">${head}
+    <div class="srcyear">
+      <div class="track">${seg('salary')}${seg('bonus')}${seg('event')}${seg('other')}</div>
+      <div class="lg">${leg}</div>
+    </div>
+    <div class="tblwrap"><table class="reg src">
+      <thead><tr>
+        <th class="lft">Месяц</th>
+        <th>Зарплата</th><th>Бонус</th><th>Мероприятие</th><th>Прочее</th>
+        <th>Доход<span class="sub">итого</span></th>
+        <th>Расход<span class="sub">факт</span></th>
+        <th>Сверх зп<span class="sub">добито</span></th>
+      </tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr>
+        <td class="mon">Итого</td>
+        <td class="num">${z(iy.by.salary)}</td><td class="num">${z(iy.by.bonus)}</td>
+        <td class="num">${z(iy.by.event)}</td><td class="num">${z(iy.by.other)}</td>
+        <td class="num">${z(iy.total)}</td><td class="num">${z(iy.spent)}</td>
+        <td class="num">${z(iy.gap)}</td>
+      </tr></tfoot>
+    </table></div>
+    ${note}
+  </section>`;
+}
+
 function secMonth(){
   const ym=detailYM,m=getMonth(ym),t=totals(ym),mat=!!state.months[ym];
   const locked=!!m.locked;
 
   const dis=locked?' disabled':'';
+
+  const srcRows=incSrc(ym).map(r=>`<div class="incrow" data-sid="${r.id}">
+    <span class="kd"><i class="sw ${r.kind}"></i><select class="inp" data-f="kind"${dis}>${INC_KINDS.map(k=>`<option value="${k.k}"${k.k===r.kind?' selected':''}>${k.label}</option>`).join('')}</select></span>
+    <input class="inp" data-f="name" value="${esc(r.name||'')}" placeholder="подпись (необязательно)"${dis}>
+    <span class="amtw"><input class="inp ni amt" data-f="amount" value="${r.amount??''}" inputmode="numeric" title="сумма, ₽"${dis}></span>
+    <button class="del" data-act="idel" title="удалить источник">✕</button>
+  </div>`).join('');
+
+  // вердикт: покрыла ли зарплата расходы месяца и чем закрыт разрыв
+  let verdict;
+  if(!t.incHas&&!t.efReal){
+    verdict=`<div class="verdict">Впиши источники дохода и факт по категориям — здесь появится расклад, сколько пришлось добить сверх зарплаты.</div>`;
+  }else if(t.topup<=0){
+    const left=t.sal-t.efReal;
+    verdict=`<div class="verdict ok">Расходы уложились в зарплату — добивать не пришлось. Остаток зп: <b>${fmt(left)} ₽</b>.`+
+      (t.extra>0?`<span class="sub">Сверх зп пришло ${fmt(t.extra)} ₽ — свободны целиком.</span>`:'')+`</div>`;
+  }else{
+    const uncov=t.topup-t.extra;
+    verdict=`<div class="verdict warn">Расходы превысили зарплату на <b>${fmt(t.topup)} ₽</b> — эту часть закрыли не из зп.`+
+      (uncov>0
+        ? `<span class="sub">Источниками сверх зп записано ${fmt(t.extra)} ₽. Ещё <b>${fmt(uncov)} ₽</b> нигде не отражено — похоже, взято из бонусов мимо таблицы. Добавь строку «Бонус» на эту сумму.</span>`
+        : `<span class="sub">Покрыто записанными источниками: сверх зп пришло ${fmt(t.extra)} ₽, свободный остаток ${fmt(t.extra-t.topup)} ₽.</span>`)+
+      `</div>`;
+  }
+
   const catRows=m.expenses.map(e=>{
     return `<div class="cat ${e.closed?'done':''}" data-eid="${e.id}">
       <span class="mk" data-act="toggle" title="${e.closed?'вернуть в план':'отметить погашенным'}"></span>
@@ -957,19 +1160,28 @@ function secMonth(){
 
   return `<section class="sec ${locked?'mlock':''}">
     <div class="sec-head">
-      <span class="idx">03</span>
+      <span class="idx">04</span>
       <h2><button class="navbtn" id="pM">‹</button> <span class="navm">${M_CAP[mIdx(ym)]} ${mYear(ym)}</span> <button class="navbtn" id="nM">›</button>${locked?'<span class="lockb">закрыт</span>':''}</h2>
       <span class="sec-note">погашено <b>${t.closedCount} из ${t.catCount}</b> · ${fmt(t.efClosed)} ₽ · осталось ${fmt(t.openSum)} ₽ · ${closeCtl}</span>
     </div>
 
-    <div style="margin-bottom:26px">
-      <div class="block-label">Доход месяца <span class="r">план ${fmt(t.ip)} ₽</span></div>
-      <div class="inc" style="grid-template-columns:1fr auto">
-        <span class="nm">Фактически пришло за ${M_NOM[mIdx(ymAdd(ym,-1))]}</span>
-        <span style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><input class="inp ni w120" id="incFact" value="${incFact(ym)??''}" placeholder="факт ₽" inputmode="numeric"${dis}><span class="cur" style="width:auto">₽</span></span>
+    <div class="incbox" style="margin-bottom:26px">
+      <div class="block-label">Доход месяца · откуда <span class="r">план ${fmt(t.ip)} ₽</span></div>
+      ${srcRows||'<div class="empty">Источников ещё нет. Добавь строку ниже: зарплата, бонус, мероприятие.</div>'}
+      <div class="addinc">
+        <select class="inp" id="newIncKind"${dis}>${INC_KINDS.map(k=>`<option value="${k.k}">${k.label}</option>`).join('')}</select>
+        <input class="inp" id="newIncName" placeholder="подпись (необязательно)" style="max-width:190px"${dis}>
+        <input class="inp ni w90" id="newIncAmt" placeholder="сумма ₽" inputmode="numeric"${dis}>
+        <button class="btn sm" id="addInc"${dis}>+ источник</button>
       </div>
-      <div class="inc-foot"><span>Итого доход</span><span class="num">${fmt(t.if_!=null?t.if_:t.ip)} ₽ · ${t.if_!=null?'факт':'план'}</span></div>
-      <p class="hint" style="margin-top:8px">Приходит 5&nbsp;${M_ROD[mIdx(ym)].toLowerCase()} — зп за ${M_NOM[mIdx(ymAdd(ym,-1))]} (пред. месяц). Впиши факт когда придёт (₽ + крипта в ₽). План ${fmt(state.settings.incomePlan)} ₽/мес меняется в «Настройках».${locked?' <b style="color:var(--pos)">Месяц закрыт — правки заморожены, нажми «переоткрыть» чтобы изменить.</b>':''}</p>
+      <div class="inc-foot"><span>Итого доход</span><span class="num">${fmt(t.incHas?t.sal+t.extra:t.ip)} ₽ · ${t.incHas?'факт':'план'}</span></div>
+      <div class="incsplit">
+        <div class="s"><span class="k">Зарплата</span><span class="v num">${fmt(t.sal)} ₽</span></div>
+        <div class="s"><span class="k">Сверх зарплаты</span><span class="v num ${t.extra>0?'pos':''}">${fmt(t.extra)} ₽</span></div>
+        <div class="s"><span class="k">Расход факт</span><span class="v num">${fmt(t.efReal)} ₽</span></div>
+      </div>
+      ${verdict}
+      <p class="hint" style="margin-top:8px">Зарплата приходит 5&nbsp;${M_ROD[mIdx(ym)].toLowerCase()} — за ${M_NOM[mIdx(ymAdd(ym,-1))]} (пред. месяц). Всё, что пришло сверх неё — бонус, мероприятие, прочее — заводи отдельной строкой: тогда видно, чем именно закрыт перерасход. План ${fmt(state.settings.incomePlan)} ₽/мес меняется в «Настройках».${locked?' <b style="color:var(--pos)">Месяц закрыт — правки заморожены, нажми «переоткрыть» чтобы изменить.</b>':''}</p>
     </div>
 
     <div class="month-grid">
@@ -1088,7 +1300,7 @@ function secGoals(rows,annDelta){
     </div>`:'';
 
   return `<section class="sec">
-    <div class="sec-head"><span class="idx">04</span><h2>Крупные цели</h2><span class="sec-note">сам распределяешь пул по целям · срок считается из плана внесения</span></div>
+    <div class="sec-head"><span class="idx">05</span><h2>Крупные цели</h2><span class="sec-note">сам распределяешь пул по целям · срок считается из плана внесения</span></div>
     ${body}
     ${done.length?`<div style="margin-top:16px">${doneRows}</div>`:''}
     <div class="pool">
@@ -1273,9 +1485,34 @@ function bind(rows){
     const m=matM(detailYM);m.locked=true;save();render();
   });
 
-  // income fact (single field)
+  // источники дохода
   const isLocked=()=>{const mm=state.months[detailYM];return !!(mm&&mm.locked);};
-  sheet.querySelector('#incFact')?.addEventListener('change',e=>{if(isLocked())return;matM(detailYM).incomeFact=parseNum(e.target.value);save();render();});
+  const incM=()=>{const mm=matM(detailYM);if(!Array.isArray(mm.incomeSrc))mm.incomeSrc=[];return mm;};
+  sheet.querySelectorAll('.incrow[data-sid]').forEach(el=>{
+    el.addEventListener('change',e=>{
+      if(isLocked())return;
+      const mm=incM(),r=mm.incomeSrc.find(x=>x.id===el.dataset.sid);if(!r)return;
+      const f=e.target.dataset.f;
+      if(f==='kind')r.kind=e.target.value;
+      else if(f==='name')r.name=e.target.value;
+      else r.amount=parseNum(e.target.value)||0;
+      incSync(mm);save();render();
+    });
+    el.querySelector('[data-act=idel]')?.addEventListener('click',()=>{
+      if(isLocked())return;
+      const mm=incM();mm.incomeSrc=mm.incomeSrc.filter(x=>x.id!==el.dataset.sid);
+      incSync(mm);save();render();
+    });
+  });
+  sheet.querySelector('#addInc')?.addEventListener('click',()=>{
+    if(isLocked())return;
+    const am=parseNum(sheet.querySelector('#newIncAmt').value);
+    if(am==null){sheet.querySelector('#newIncAmt').focus();return;}
+    const mm=incM();
+    mm.incomeSrc.push({id:uid(),kind:sheet.querySelector('#newIncKind').value,name:sheet.querySelector('#newIncName').value.trim(),amount:am});
+    incSync(mm);save();render();
+  });
+  sheet.querySelector('#newIncAmt')?.addEventListener('keydown',e=>{if(e.key==='Enter')sheet.querySelector('#addInc').click();});
 
   // categories
   sheet.querySelectorAll('.cat[data-eid]').forEach(el=>{

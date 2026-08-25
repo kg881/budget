@@ -1,7 +1,7 @@
 /* Бюджет — минимальный service worker.
    index.html: network-first (обновления приходят сразу, офлайн — из кэша).
    Иконки/манифест/шрифты Google: cache-first (не меняются). */
-const CACHE = 'budget-v4';
+const CACHE = 'budget-v5';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
