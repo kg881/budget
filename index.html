@@ -211,6 +211,18 @@
   .whatif{margin-top:12px;padding:10px 2px 0;background:none;border:none;border-top:1px dashed var(--rule);display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;font-size:12px;color:var(--ink-2);line-height:1.5}
   .whatif b{color:var(--ink)} .whatif .res{color:var(--accent-ink);font-weight:600;font-family:"IBM Plex Mono",monospace}
   .whatif input{width:66px}
+  /* план внесения по цели */
+  .gplan{margin-top:12px;padding:10px 2px 0;border-top:1px dashed var(--rule);font-size:12px;color:var(--ink-2);line-height:1.5}
+  .gplan .row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+  .gplan input{width:86px}
+  .gplan input[type=month]{width:130px;font-family:"IBM Plex Mono",monospace;font-size:11px}
+  .gplan .lst{margin-top:8px;display:flex;flex-direction:column;gap:3px}
+  .gplan .it{display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink);border-bottom:1px dotted var(--rule-2);padding:2px 0}
+  .gplan .it .a{display:flex;align-items:center;gap:8px}
+  .gplan .eta{margin-top:9px;font-size:12.5px;color:var(--ink)}
+  .gplan .eta b{color:var(--accent-ink);font-family:"IBM Plex Mono",monospace}
+  .gplan .late{color:var(--neg)} .gplan .fit{color:var(--pos)}
+  .gplan .ref{margin-top:6px;font-size:11px;color:var(--ink-3)}
   .alloc{margin-top:14px;padding:11px 14px;background:var(--paper-2);border:1px solid var(--rule);display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px;color:var(--ink-2)}
   .alloc .free{margin-right:auto;white-space:nowrap}
   .alloc .free b{color:var(--ink);font-family:"IBM Plex Mono",monospace}
@@ -324,7 +336,7 @@ const M_DAT=['январю','февралю','марту','апрелю','маю
 const uid=()=>'x'+Math.random().toString(36).slice(2,9);
 
 function defaultState(){const ym=todayYM();return{
-  version:6,
+  version:7,
   settings:{planRate:78,incomePlan:0,horizonStart:ym,horizonMonths:12,bonusCons:300,bonusAvg:1000,showUsd:false},
   template:{
     expenses:[
@@ -424,6 +436,14 @@ function migrate(){
     (state.goals||[]).forEach(g=>{if(g.saved==null)g.saved=0;});
     state.version=6;
   }
+  if(state.version<7){
+    // План внесения по каждой цели: сколько кладу каждый месяц (monthly)
+    // и разовые пополнения по конкретным месяцам (plan). Срок закрытия
+    // цели считается из них, а не из гипотезы «весь средний бонус сюда».
+    (state.goals||[]).forEach(g=>{if(g.monthly==null)g.monthly=0;if(!Array.isArray(g.plan))g.plan=[];});
+    state.version=7;
+  }
+  (state.goals||[]).forEach(g=>{if(g.monthly==null)g.monthly=0;if(!Array.isArray(g.plan))g.plan=[];});
   if(!state.bonusHistory)state.bonusHistory=[];
   if(!state.bonusOverrides)state.bonusOverrides={};
   if(!state.accounts)state.accounts=[];
@@ -990,19 +1010,29 @@ function secGoals(rows,annDelta){
     const pct=Math.min(100,saved/g.amount*100);
     const need=Math.max(0,g.amount-saved);
     const tempoNeed=mLeft>0?need/mLeft:need;
-    const projAvg=saved+mLeft*avgRub;                     // «если весь средний бонус направлять сюда»
-    const pctAvg=Math.min(100,projAvg/g.amount*100);
+    const projPlan=saved+(g.monthly||0)*mLeft+(g.plan||[]).filter(x=>x.ym>=todayYM()&&(!g.targetMonth||x.ym<=g.targetMonth)).reduce((a,x)=>a+(x.amount||0),0);
+    const pctAvg=Math.min(100,projPlan/g.amount*100);
     let badge;
-    if(saved>=g.amount)badge='<span class="cur" style="color:var(--pos)">цель собрана</span>';
-    else if(projAvg>=g.amount)badge='<span class="cur" title="прогноз считается для каждой цели отдельно, будто весь средний бонус идёт только в неё">успеешь, если весь ср. бонус сюда</span>';
-    else badge='<span class="cur" style="color:var(--neg)">не успеть даже всем ср. бонусом</span>';
+    const fc=goalForecast(g);
+    const planAhead=goalPlanAhead(g);
+    const lateBy=(fc.month&&g.targetMonth)?ymDiff(g.targetMonth,fc.month):null;
+    let etaText;
+    if(fc.done)etaText='<b class="fit">Цель уже собрана</b>';
+    else if(fc.never)etaText='<span class="late">План внесения не задан — срок не определить</span>';
+    else if(lateBy!=null&&lateBy>0)etaText=`Закроется <b class="late">к ${ymDat(fc.month)}</b> (${fc.months} мес) — <span class="late">позже срока на ${lateBy} мес</span>`;
+    else if(lateBy!=null)etaText=`Закроется <b class="fit">к ${ymDat(fc.month)}</b> (${fc.months} мес) — <span class="fit">в срок</span>`;
+    else etaText=`Закроется <b>к ${ymDat(fc.month)}</b> (${fc.months} мес)`;
+    if(fc.done)badge='<span class="cur" style="color:var(--pos)">цель собрана</span>';
+    else if(fc.never)badge='<span class="cur" style="color:var(--ink-3)">план внесения не задан</span>';
+    else if(lateBy!=null&&lateBy>0)badge=`<span class="cur" style="color:var(--neg)">закроется к ${ymDat(fc.month)} · позже срока</span>`;
+    else badge=`<span class="cur" style="color:var(--pos)">закроется к ${ymDat(fc.month)}</span>`;
     const canUp=gi>0,canDown=gi<active.length-1;
     const freeCls=free<0?'neg':'';
     return `<div class="goal" data-gid="${g.id}">
       <div class="goal-left">
         <div class="g-lab"><span><span class="prio-badge">${gi+1}</span> Цель «${esc(g.name)}»</span><span style="display:flex;gap:6px;align-items:center"><span class="gpri"><button data-act="gup" ${canUp?'':'disabled style=opacity:.3'} title="выше в списке">↑</button><button data-act="gdown" ${canDown?'':'disabled style=opacity:.3'} title="ниже в списке">↓</button></span><button class="btn sm" data-act="gedit">изм.</button></span></div>
         <div class="goal-target num">${fmt(g.amount)}<span class="rub"> ₽</span>${sub$(g.amount)}</div>
-        <div class="goal-sub">отложено <b>${fmt(saved)} ₽</b> · <b>${pct.toFixed(1)}%</b><br>осталось <b>${fmt(need)} ₽</b><br>темп <b>${fmt(tempoNeed)} ₽/мес</b> ≈ <b>$${fmt(tempoNeed/rate)}</b><br>срок ${g.targetMonth?ymDat(g.targetMonth):'—'} · ${mLeft} мес</div>
+        <div class="goal-sub">отложено <b>${fmt(saved)} ₽</b> · <b>${pct.toFixed(1)}%</b><br>осталось <b>${fmt(need)} ₽</b><br>темп <b>${fmt(tempoNeed)} ₽/мес</b> ≈ <b>$${fmt(tempoNeed/rate)}</b><br>срок ${g.targetMonth?ymNom(g.targetMonth):'—'} · ${mLeft} мес</div>
       </div>
       <div class="goal-right">
         <div class="prog-meta"><span class="cur">отложено ${pct.toFixed(1)}%</span>${badge}<span>цель 100%</span></div>
@@ -1015,8 +1045,24 @@ function secGoals(rows,annDelta){
           <button class="btn sm" data-act="gallocall" title="переложить весь свободный остаток">всё свободное</button>
           <button class="btn sm" data-act="gdealloc" title="вернуть отложенное обратно в пул">− вернуть</button>
         </div>
+        <div class="gplan">
+          <div class="row">
+            <span>Вношу каждый месяц</span>
+            <input class="inp ni gmonthly" value="${g.monthly||0}" inputmode="numeric" placeholder="₽">
+            <span>₽${stats?` · <button class="btn sm" data-act="gusebonus" title="подставить средний бонус по твоей истории">≈ ср. бонус ${fmt(stats.mean*rate)} ₽</button>`:''}</span>
+          </div>
+          <div class="row" style="margin-top:7px">
+            <span>Разовое пополнение</span>
+            <input type="month" class="inp gpm" value="${ymAdd(todayYM(),1)}">
+            <input class="inp ni gpa" inputmode="numeric" placeholder="₽">
+            <button class="btn sm pos" data-act="gpadd">+ внести</button>
+          </div>
+          ${planAhead.length?`<div class="lst">${planAhead.map(x=>`<div class="it"><span>${ymNom(x.ym)}</span><span class="a"><b>${fmt(x.amount)} ₽</b><button class="entry re" data-act="gpdel" data-pid="${x.id}">✕</button></span></div>`).join('')}</div>`:''}
+          <div class="eta">${etaText}</div>
+          ${g.targetMonth?`<div class="ref">целевой срок — ${ymNom(g.targetMonth)}</div>`:''}
+        </div>
         <div class="whatif" data-gid="${g.id}" data-amount="${g.amount}" data-have="${Math.round(saved)}">
-          <span>Если откладывать по</span><input class="inp ni w64 wibonus" value="${s.bonusAvg}" inputmode="numeric"><span>$/мес —</span>
+          <span>Прикинуть: если откладывать по</span><input class="inp ni w64 wibonus" value="${s.bonusAvg}" inputmode="numeric"><span>$/мес —</span>
           <span class="wiout">цель закроется <b class="res">${whatIfMonth(saved,g.amount,s.bonusAvg*rate)}</b></span>
         </div>
         <div style="margin-top:14px;display:flex;gap:8px"><button class="btn sm" data-act="gbuy">куплено</button><button class="btn sm" data-act="gdel">удалить</button></div>
@@ -1042,7 +1088,7 @@ function secGoals(rows,annDelta){
     </div>`:'';
 
   return `<section class="sec">
-    <div class="sec-head"><span class="idx">04</span><h2>Крупные цели</h2><span class="sec-note">сам распределяешь пул по целям · прогноз по твоей истории</span></div>
+    <div class="sec-head"><span class="idx">04</span><h2>Крупные цели</h2><span class="sec-note">сам распределяешь пул по целям · срок считается из плана внесения</span></div>
     ${body}
     ${done.length?`<div style="margin-top:16px">${doneRows}</div>`:''}
     <div class="pool">
@@ -1065,6 +1111,30 @@ function secGoals(rows,annDelta){
   </section>`;
 }
 function ymDat(ym){return M_DAT[mIdx(ym)]+' '+mYear(ym);}
+function ymNom(ym){return M_NOM[mIdx(ym)]+' '+mYear(ym);}
+/* Сколько по плану попадёт в цель в конкретном месяце: регулярный взнос + разовые */
+function goalPlanFor(g,ym){
+  const one=(g.plan||[]).filter(p=>p.ym===ym).reduce((a,p)=>a+(p.amount||0),0);
+  return (g.monthly||0)+one;
+}
+/* Когда цель закроется при текущем плане внесения. Считаем с текущего месяца
+   вперёд: разовые из прошлого уже учтены в «отложено». */
+function goalForecast(g){
+  const need=(g.amount||0)-(g.saved||0);
+  if(need<=0)return{done:true,month:null,months:0};
+  let acc=0,ym=todayYM();
+  for(let i=0;i<240;i++){
+    acc+=goalPlanFor(g,ym);
+    if(acc>=need)return{done:false,month:ym,months:i+1};
+    ym=ymAdd(ym,1);
+  }
+  return{done:false,month:null,months:null,never:true};
+}
+/* Разовые внесения, которые ещё впереди */
+function goalPlanAhead(g){
+  const now=todayYM();
+  return (g.plan||[]).filter(x=>x.ym>=now).sort((a,b)=>a.ym<b.ym?-1:1);
+}
 function whatIfMonth(have,amount,monthlyRub){
   const need=amount-have;
   if(need<=0)return'уже сейчас';
@@ -1239,6 +1309,27 @@ function bind(rows){
       }
     });
     // what-if live recompute
+    // план внесения (своя ссылка на цель: внутри click-обработчика выше своя)
+    const gp=state.goals.find(x=>x.id===el.dataset.gid);
+    if(gp){
+      el.querySelector('.gmonthly')?.addEventListener('change',e=>{
+        gp.monthly=Math.max(0,parseNum(e.target.value)||0);save();render();});
+      el.querySelector('[data-act="gpadd"]')?.addEventListener('click',()=>{
+        const ym=el.querySelector('.gpm').value;
+        const amt=parseNum(el.querySelector('.gpa').value);
+        if(!/^\d{4}-\d{2}$/.test(ym)){alert('Выбери месяц');return;}
+        if(!amt||amt<=0){el.querySelector('.gpa').focus();return;}
+        if(!Array.isArray(gp.plan))gp.plan=[];
+        const ex=gp.plan.find(x=>x.ym===ym);
+        if(ex)ex.amount=(ex.amount||0)+amt; else gp.plan.push({id:uid(),ym,amount:amt});
+        save();render();});
+      el.querySelectorAll('[data-act="gpdel"]').forEach(b=>b.addEventListener('click',()=>{
+        gp.plan=(gp.plan||[]).filter(x=>x.id!==b.dataset.pid);save();render();}));
+      el.querySelector('[data-act="gusebonus"]')?.addEventListener('click',()=>{
+        const st=bonusStats();if(!st){alert('Нет истории бонусов');return;}
+        gp.monthly=Math.round(st.mean*(state.settings.planRate||78));save();render();});
+    }
+
     const wi=el.querySelector('.whatif');
     wi?.querySelector('.wibonus')?.addEventListener('input',e=>{
       const amount=Number(wi.dataset.amount),have=Number(wi.dataset.have);
@@ -1247,7 +1338,7 @@ function bind(rows){
     });
   });
   sheet.querySelectorAll('.goal-done[data-gid] [data-act=gdel]').forEach(b=>b.addEventListener('click',()=>{const gid=b.closest('[data-gid]').dataset.gid;if(confirm('Удалить из списка?')){state.goals=state.goals.filter(x=>x.id!==gid);save();render();}}));
-  sheet.querySelector('#gAdd')?.addEventListener('click',()=>{const name=sheet.querySelector('#gName').value.trim();const amount=parseNum(sheet.querySelector('#gAmt').value);const tm=sheet.querySelector('#gMonth').value;if(!name||!amount){alert('Нужны название и сумма');return;}const maxP=state.goals.reduce((m,g)=>Math.max(m,g.priority||0),0);state.goals.push({id:uid(),name,amount,targetMonth:tm,done:false,spent:0,saved:0,priority:maxP+1});save();render();});
+  sheet.querySelector('#gAdd')?.addEventListener('click',()=>{const name=sheet.querySelector('#gName').value.trim();const amount=parseNum(sheet.querySelector('#gAmt').value);const tm=sheet.querySelector('#gMonth').value;if(!name||!amount){alert('Нужны название и сумма');return;}const maxP=state.goals.reduce((m,g)=>Math.max(m,g.priority||0),0);state.goals.push({id:uid(),name,amount,targetMonth:tm,done:false,spent:0,saved:0,priority:maxP+1,monthly:0,plan:[]});save();render();});
 
 
   // bonuses
