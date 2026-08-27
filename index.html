@@ -84,6 +84,11 @@
   table.reg td.mon .yr{color:var(--ink-3);font-weight:400;padding-left:5px;font-size:11px}
   table.reg td.dl{color:var(--pos)} table.reg td.dl.neg{color:var(--neg)}
   table.reg td.gap{color:var(--accent-ink);font-weight:500} table.reg td.gap.zero{color:var(--ink-3);font-weight:400}
+  /* № и месяц ужимаем по содержимому — три цифровые колонки делят остаток поровну,
+     иначе месяц забирает половину ширины и цифры жмутся к правому краю */
+  table.reg:not(.src) th.lft,table.reg:not(.src) td.no,table.reg:not(.src) td.mon{width:1%;white-space:nowrap}
+  table.reg:not(.src) td.no,table.reg:not(.src) thead th.lft:first-child,
+  table.reg:not(.src) tfoot td.no{padding-right:16px}
   table.reg tbody.hid{display:none}
   .sec-head .btn{flex:none}
   table.reg td:not(.no):not(.mon),table.reg th:not(.lft){padding-left:20px}
@@ -282,9 +287,6 @@
   .colophon b{color:var(--ink-2);font-weight:600}
   /* ===== мобильная вёрстка (айфон) ===== */
   @media(max-width:720px){
-    /* реестр: на телефоне остаются № · Месяц · Доход факт · Расход факт · Сверх зп */
-    table.reg:not(.src) th:nth-child(3),table.reg:not(.src) td:nth-child(3),
-    table.reg:not(.src) th:nth-child(5),table.reg:not(.src) td:nth-child(5){display:none}
     /* источники: на телефоне остаются Месяц · Зарплата · Бонус · Сверх зп */
     table.reg.src th:nth-child(n+4):nth-child(-n+7),
     table.reg.src td:nth-child(n+4):nth-child(-n+7){display:none}
@@ -923,8 +925,8 @@ function masthead(){
 function ymFull(ym,short){return M_CAP[mIdx(ym)]+' '+(short?'’'+mYear(ym).slice(2):mYear(ym));}
 
 function secRegister(rows,cur){
-  const sumIp=rows.reduce((s,r)=>s+r.ip,0),sumIf=rows.reduce((s,r)=>s+(r.if_||0),0);
-  const sumEp=rows.reduce((s,r)=>s+r.ep,0),sumEf=rows.reduce((s,r)=>s+(r.efReal||0),0);
+  const sumIf=rows.reduce((s,r)=>s+(r.if_||0),0);
+  const sumEf=rows.reduce((s,r)=>s+(r.efReal||0),0);
   const sumTop=rows.reduce((s,r)=>s+(r.topup||0),0);
   const anyIf=rows.some(r=>r.if_!=null),anyEf=rows.some(r=>r.efReal>0);
   const body=rows.map(r=>{
@@ -932,28 +934,26 @@ function secRegister(rows,cur){
     return `<tr class="${isCur?'now':''} ${isDet&&!isCur?'detail':''}" data-ym="${r.ym}">
       <td class="no num">${String(r.i+1).padStart(2,'0')}</td>
       <td class="mon">${M_CAP[mIdx(r.ym)]} <span class="yr">${mYear(r.ym).slice(2)}</span>${isCur?'<span class="tag">текущий</span>':''}${r.locked?'<span class="lockb">✓</span>':''}</td>
-      <td class="num">${fmt(r.ip)}</td>
       <td class="num ${r.if_==null?'muted':''}">${r.if_==null?'—':fmt(r.if_)}${r.extra>0?`<span class="factnote num">зп ${fmt(r.sal)}</span>`:''}</td>
-      <td class="num">${fmt(r.ep)}</td>
       <td class="num ${r.efReal?'':'muted'}">${r.efReal?fmt(r.efReal):'—'}</td>
       <td class="num gap ${r.topup>0?'':'zero'}">${r.topup>0?fmt(r.topup):'—'}</td>
     </tr>`;
   }).join('');
   const tog=`<button class="btn sm" id="regTog">${regOpen?'свернуть':'показать по месяцам'}</button>`;
   return `<section class="sec">
-    <div class="sec-head"><span class="idx">01</span><h2>Реестр года</h2><span class="sec-note">доход · расход · сколько добито сверх зп</span>${tog}</div>
+    <div class="sec-head"><span class="idx">01</span><h2>Реестр года</h2><span class="sec-note">факт: доход · расход · сколько добито сверх зп</span>${tog}</div>
     <table class="reg">
       <thead><tr>
         <th class="lft">№</th><th class="lft">Месяц</th>
-        <th>Доход<span class="sub">план</span></th><th>Доход<span class="sub">факт</span></th>
-        <th>Расход<span class="sub">план</span></th><th>Расход<span class="sub">факт</span></th>
+        <th>Доход<span class="sub">факт</span></th>
+        <th>Расход<span class="sub">факт</span></th>
         <th>Сверх зп<span class="sub">добито</span></th>
       </tr></thead>
       <tbody${regOpen?'':' class="hid"'}>${body}</tbody>
       <tfoot><tr>
         <td class="no"></td><td class="mon">Итого · год</td>
-        <td class="num">${fmt(sumIp)}</td><td class="num ${anyIf?'':'muted'}">${anyIf?fmt(sumIf):'—'}</td>
-        <td class="num">${fmt(sumEp)}</td><td class="num ${anyEf?'':'muted'}">${anyEf?fmt(sumEf):'—'}</td>
+        <td class="num ${anyIf?'':'muted'}">${anyIf?fmt(sumIf):'—'}</td>
+        <td class="num ${anyEf?'':'muted'}">${anyEf?fmt(sumEf):'—'}</td>
         <td class="num gap ${sumTop>0?'':'zero'}">${sumTop>0?fmt(sumTop):'—'}</td>
       </tr></tfoot>
     </table>
