@@ -83,7 +83,9 @@
   table.reg td.mon{text-align:left;font-family:"Golos Text",sans-serif;font-variant-numeric:normal;font-size:13px;font-weight:500;letter-spacing:.01em}
   table.reg td.mon .yr{color:var(--ink-3);font-weight:400;padding-left:5px;font-size:11px}
   table.reg td.dl{color:var(--pos)} table.reg td.dl.neg{color:var(--neg)}
-  table.reg td.cum{color:var(--ink);font-weight:500} table.reg td.cum.neg{color:var(--neg)}
+  table.reg td.gap{color:var(--accent-ink);font-weight:500} table.reg td.gap.zero{color:var(--ink-3);font-weight:400}
+  table.reg tbody.hid{display:none}
+  .sec-head .btn{flex:none}
   table.reg td:not(.no):not(.mon),table.reg th:not(.lft){padding-left:20px}
   table.reg tbody tr{cursor:pointer}
   table.reg tbody tr:hover td{background:rgba(28,26,22,.03)}
@@ -101,33 +103,6 @@
   table.reg tfoot td:not(.no):not(.mon){padding-left:20px}
   table.reg tfoot td.mon{text-align:left;font-family:"Golos Text",sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-2);font-weight:600}
   table.reg tfoot td.no{text-align:left} table.reg tfoot td.dl{color:var(--pos)}
-
-  /* delta strip */
-  .delta-strip{padding:6px 0 0}
-  .bars{position:relative;height:132px;display:flex;align-items:flex-end;border-bottom:1.5px solid var(--ink)}
-  .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative}
-  .bar{width:5px;background:var(--ink)} .col.cur .bar{width:7px;background:var(--accent)}
-  .col.negb .bar{background:var(--neg)}
-  .col .cap{position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-family:"IBM Plex Mono",monospace;font-size:8.5px;color:var(--ink-3);white-space:nowrap;letter-spacing:-.02em}
-  .col.cur .cap{color:var(--accent-ink);font-weight:600}
-  .avg-line{position:absolute;left:0;right:0;border-top:1px dashed var(--rule-2)}
-  .avg-tag{position:absolute;right:0;top:-14px;font-family:"IBM Plex Mono",monospace;font-size:8.5px;letter-spacing:.06em;color:var(--ink-2);text-transform:uppercase;background:var(--paper);padding-left:6px}
-  .axis{display:flex;margin-top:8px}
-  .axis .t{flex:1;text-align:center;font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--ink-2)}
-  .axis .t.cur{color:var(--accent-ink);font-weight:600}
-
-  /* current month grid */
-  .month-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:0}
-  @media(max-width:820px){.month-grid{grid-template-columns:1fr;gap:28px}}
-  .cats{padding-right:40px;border-right:1px solid var(--rule)}
-  @media(max-width:820px){.cats{padding-right:0;border-right:none}}
-  .ledger{padding-left:40px}
-  @media(max-width:820px){.ledger{padding-left:0}}
-  .block-label{font-size:10px;text-transform:uppercase;letter-spacing:.15em;color:var(--ink-2);font-weight:600;display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
-  .block-label .r{font-family:"IBM Plex Mono",monospace;letter-spacing:.04em;color:var(--ink-3)}
-  .mlock .cat .mk,.mlock .addcat,.mlock .addinc,.mlock .cat .nm input{pointer-events:none;opacity:.6}
-  .mlock .incrow .del,.mlock .cat .del{pointer-events:none;opacity:0}
-  .mlock-note{margin-top:6px;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--pos)}
 
   /* income rows */
   .inc{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--rule)}
@@ -167,7 +142,7 @@
   .sw.event{background:var(--src-evt)} .sw.other{background:var(--src-oth)}
   .tblwrap{overflow-x:auto}
   table.reg.src tbody tr{cursor:default}
-  table.reg.src td.gap{color:var(--accent-ink);font-weight:500} table.reg.src td.gap.zero{color:var(--ink-3);font-weight:400}
+
   .inc .nm{font-size:12.5px;color:var(--ink)}
   .inc .cur{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-3);width:14px}
   .inc-foot{display:flex;justify-content:space-between;padding-top:10px;margin-top:2px;border-top:1px solid var(--rule-2);font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-2);font-weight:600}
@@ -307,8 +282,9 @@
   .colophon b{color:var(--ink-2);font-weight:600}
   /* ===== мобильная вёрстка (айфон) ===== */
   @media(max-width:720px){
-    /* реестр: на телефоне остаются № · Месяц · Дельта (+факт) · Накопление */
-    table.reg:not(.src) th:nth-child(n+3):nth-child(-n+6),table.reg:not(.src) td:nth-child(n+3):nth-child(-n+6){display:none}
+    /* реестр: на телефоне остаются № · Месяц · Доход факт · Расход факт · Сверх зп */
+    table.reg:not(.src) th:nth-child(3),table.reg:not(.src) td:nth-child(3),
+    table.reg:not(.src) th:nth-child(5),table.reg:not(.src) td:nth-child(5){display:none}
     /* источники: на телефоне остаются Месяц · Зарплата · Бонус · Сверх зп */
     table.reg.src th:nth-child(n+4):nth-child(-n+7),
     table.reg.src td:nth-child(n+4):nth-child(-n+7){display:none}
@@ -387,6 +363,7 @@ function defaultState(){const ym=todayYM();return{
 let state=loadLocal()||defaultState();
 migrate();
 let detailYM=todayYM();
+let regOpen=false;   // помесячные строки реестра: по умолчанию свёрнуты
 
 /* ===================== date/format ===================== */
 function todayYM(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
@@ -900,22 +877,16 @@ let cbrNow=null;
 function render(){
   const H=horizon();
   if(!H.includes(detailYM))detailYM=H.includes(todayYM())?todayYM():H[0];
-  const rows=[];let cum=0;
-  // Накопление — чисто плановая линия. Фактическую дельту в него не подмешиваем:
-  // часть трат закрывается из бонусов мимо таблицы, поэтому «факт накопления»
-  // всё равно был бы неверным. Что реально пришлось добить сверх зп — в секции 03.
-  H.forEach((ym,i)=>{const t=totals(ym);cum+=t.dPlan;rows.push({ym,i,...t,cum});});
+  const rows=[];
+  H.forEach((ym,i)=>{rows.push({ym,i,...totals(ym)});});
   const annDelta=annualPlanDelta();
-  const annFact=annualFactDelta();
-  const endCum=rows.length?rows[rows.length-1].cum:0;
   const cur=todayYM();
   const curT=H.includes(cur)?totals(cur):null;
 
   sheet.innerHTML=
     metaBar()+
     masthead()+
-    secRegister(rows,cur,annDelta,endCum)+
-    secDelta(rows,cur)+
+    secRegister(rows,cur)+
     secIncome(rows)+
     secMonth()+
     secGoals(rows,annDelta)+
@@ -951,10 +922,11 @@ function masthead(){
 }
 function ymFull(ym,short){return M_CAP[mIdx(ym)]+' '+(short?'’'+mYear(ym).slice(2):mYear(ym));}
 
-function secRegister(rows,cur,annDelta,endCum){
+function secRegister(rows,cur){
   const sumIp=rows.reduce((s,r)=>s+r.ip,0),sumIf=rows.reduce((s,r)=>s+(r.if_||0),0);
-  const sumEp=rows.reduce((s,r)=>s+r.ep,0),sumEf=rows.reduce((s,r)=>s+(r.efClosed||0),0);
-  const anyIf=rows.some(r=>r.if_!=null),anyEf=rows.some(r=>r.anyClosed);
+  const sumEp=rows.reduce((s,r)=>s+r.ep,0),sumEf=rows.reduce((s,r)=>s+(r.efReal||0),0);
+  const sumTop=rows.reduce((s,r)=>s+(r.topup||0),0);
+  const anyIf=rows.some(r=>r.if_!=null),anyEf=rows.some(r=>r.efReal>0);
   const body=rows.map(r=>{
     const isCur=r.ym===cur,isDet=r.ym===detailYM;
     return `<tr class="${isCur?'now':''} ${isDet&&!isCur?'detail':''}" data-ym="${r.ym}">
@@ -963,54 +935,34 @@ function secRegister(rows,cur,annDelta,endCum){
       <td class="num">${fmt(r.ip)}</td>
       <td class="num ${r.if_==null?'muted':''}">${r.if_==null?'—':fmt(r.if_)}${r.extra>0?`<span class="factnote num">зп ${fmt(r.sal)}</span>`:''}</td>
       <td class="num">${fmt(r.ep)}</td>
-      <td class="num ${r.anyClosed?'':'muted'}">${r.anyClosed?fmt(r.efClosed):'—'}</td>
-      <td class="num dl ${r.dPlan<0?'neg':''}">${fmtS(r.dPlan)}${r.dFact!=null?`<span class="factnote num">факт ${fmtS(r.dFact)}</span>`:''}</td>
-      <td class="num cum ${r.cum<0?'neg':''}">${fmtS(r.cum)}</td>
+      <td class="num ${r.efReal?'':'muted'}">${r.efReal?fmt(r.efReal):'—'}</td>
+      <td class="num gap ${r.topup>0?'':'zero'}">${r.topup>0?fmt(r.topup):'—'}</td>
     </tr>`;
   }).join('');
+  const tog=`<button class="btn sm" id="regTog">${regOpen?'свернуть':'показать по месяцам'}</button>`;
   return `<section class="sec">
-    <div class="sec-head"><span class="idx">01</span><h2>Реестр года</h2><span class="sec-note">план / факт · дельта · накопление по плану</span></div>
+    <div class="sec-head"><span class="idx">01</span><h2>Реестр года</h2><span class="sec-note">доход · расход · сколько добито сверх зп</span>${tog}</div>
     <table class="reg">
       <thead><tr>
         <th class="lft">№</th><th class="lft">Месяц</th>
         <th>Доход<span class="sub">план</span></th><th>Доход<span class="sub">факт</span></th>
         <th>Расход<span class="sub">план</span></th><th>Расход<span class="sub">факт</span></th>
-        <th>Дельта<span class="sub">план</span></th><th>Накопление<span class="sub">план, нарастающим</span></th>
+        <th>Сверх зп<span class="sub">добито</span></th>
       </tr></thead>
-      <tbody>${body}</tbody>
+      <tbody${regOpen?'':' class="hid"'}>${body}</tbody>
       <tfoot><tr>
         <td class="no"></td><td class="mon">Итого · год</td>
         <td class="num">${fmt(sumIp)}</td><td class="num ${anyIf?'':'muted'}">${anyIf?fmt(sumIf):'—'}</td>
         <td class="num">${fmt(sumEp)}</td><td class="num ${anyEf?'':'muted'}">${anyEf?fmt(sumEf):'—'}</td>
-        <td class="num dl ${annDelta<0?'neg':''}">${fmtS(annDelta)}</td><td class="num ${endCum<0?'neg':''}">${fmtS(endCum)}</td>
+        <td class="num gap ${sumTop>0?'':'zero'}">${sumTop>0?fmt(sumTop):'—'}</td>
       </tr></tfoot>
     </table>
   </section>`;
 }
 
-function secDelta(rows,cur){
-  const maxAbs=Math.max(20000,...rows.map(r=>Math.abs(r.dPlan)));
-  const avg=rows.reduce((s,r)=>s+r.dPlan,0)/(rows.length||1);
-  const cols=rows.map(r=>{
-    const h=Math.max(3,Math.abs(r.dPlan)/maxAbs*118);
-    const isCur=r.ym===cur;
-    const cap=(r.dPlan/1000).toLocaleString('ru-RU',{maximumFractionDigits:1})+'к';
-    return `<div class="col ${isCur?'cur':''} ${r.dPlan<0?'negb':''}"><span class="cap num">${cap}</span><div class="bar" style="height:${h.toFixed(0)}px"></div></div>`;
-  }).join('');
-  const axis=rows.map(r=>`<div class="t ${r.ym===cur?'cur':''}">${M_SH[mIdx(r.ym)]}</div>`).join('');
-  const avgBottom=Math.max(3,Math.abs(avg)/maxAbs*118);
-  return `<section class="sec">
-    <div class="sec-head"><span class="idx">02</span><h2>Дельта по месяцам</h2><span class="sec-note">план, ₽/мес · базовая линия <b>0</b></span></div>
-    <div class="delta-strip">
-      <div class="bars"><div class="avg-line" style="bottom:${avgBottom.toFixed(0)}px"><span class="avg-tag">ср. ${fmt(avg)}</span></div>${cols}</div>
-      <div class="axis">${axis}</div>
-    </div>
-  </section>`;
-}
-
 /* ===== 03 · Источники дохода: откуда деньги и чем закрыт перерасход ===== */
 function secIncome(rows){
-  const head=`<div class="sec-head"><span class="idx">03</span><h2>Источники дохода</h2><span class="sec-note">откуда пришло · чем закрыт перерасход над зп</span></div>`;
+  const head=`<div class="sec-head"><span class="idx">02</span><h2>Источники дохода</h2><span class="sec-note">откуда пришло · чем закрыт перерасход над зп</span></div>`;
   const R=rows.filter(r=>r.incHas||r.efReal>0);
   if(!R.length)return `<section class="sec">${head}
     <div class="empty">Пока ни одного источника. Открой месяц ниже и добавь строки: зарплата, бонус, мероприятие — здесь появится разбивка.</div>
@@ -1126,7 +1078,7 @@ function secMonth(){
 
   return `<section class="sec ${locked?'mlock':''}">
     <div class="sec-head">
-      <span class="idx">04</span>
+      <span class="idx">03</span>
       <h2><button class="navbtn" id="pM">‹</button> <span class="navm">${M_CAP[mIdx(ym)]} ${mYear(ym)}</span> <button class="navbtn" id="nM">›</button>${locked?'<span class="lockb">закрыт</span>':''}</h2>
       <span class="sec-note">погашено <b>${t.closedCount} из ${t.catCount}</b> · ${fmt(t.efClosed)} ₽ · осталось ${fmt(t.openSum)} ₽ · ${closeCtl}</span>
     </div>
@@ -1240,7 +1192,7 @@ function secGoals(rows,annDelta){
     </div>`:'';
 
   return `<section class="sec">
-    <div class="sec-head"><span class="idx">05</span><h2>Крупные цели</h2><span class="sec-note">сам распределяешь пул по целям</span></div>
+    <div class="sec-head"><span class="idx">04</span><h2>Крупные цели</h2><span class="sec-note">сам распределяешь пул по целям</span></div>
     ${body}
     ${done.length?`<div style="margin-top:16px">${doneRows}</div>`:''}
     <div class="pool">
@@ -1383,6 +1335,9 @@ function colophon(){
 function bind(rows){
   // register row → select detail month
   sheet.querySelectorAll('table.reg tbody tr').forEach(tr=>tr.addEventListener('click',()=>{detailYM=tr.dataset.ym;render();document.querySelector('.sec-head .navm')?.scrollIntoView({block:'center',behavior:'smooth'});}));
+
+  // реестр: раскрыть/свернуть помесячные строки
+  sheet.querySelector('#regTog')?.addEventListener('click',()=>{regOpen=!regOpen;render();});
 
   // currency toggle
   sheet.querySelector('#curTog')?.addEventListener('click',()=>{state.settings.showUsd=!state.settings.showUsd;save();render();});
